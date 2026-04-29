@@ -88,7 +88,7 @@ export default function Dashboard() {
                 {latestPass.place}
               </h2>
 
-              <span className={`inline-block text-white text-xs px-3 py-1 rounded-full mt-2 ${latestPass.status === 'Active' ? 'bg-green-500' : latestPass.status === 'Pending' ? 'bg-orange-500' : 'bg-red-500'}`}>
+              <span className={`inline-block text-white text-xs px-3 py-1 rounded-full mt-2 ${latestPass.status === 'Active' ? 'bg-green-500' : latestPass.status === 'Pending' ? 'bg-orange-500' : latestPass.status === 'Out' ? 'bg-purple-500' : latestPass.status === 'Returned' ? 'bg-teal-500' : 'bg-red-500'}`}>
                 {latestPass.status}
               </span>
 
@@ -127,8 +127,8 @@ export default function Dashboard() {
             className="mt-4 bg-gray-100 rounded-xl p-3 text-center cursor-pointer hover:scale-105 transition"
           >
             <p className="text-sm font-medium">Student Status</p>
-            <p className="text-xs text-green-600 font-semibold mt-1">
-              In Class
+            <p className={`text-xs font-semibold mt-1 ${latestPass?.status === 'Out' ? 'text-purple-600' : 'text-green-600'}`}>
+              {latestPass?.status === 'Out' ? 'Out of Campus' : 'In Campus'}
             </p>
           </div>
 

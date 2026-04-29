@@ -4,7 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import dbConnect from "@/lib/mongodb";
 import Pass from "@/models/Pass";
 
-const PASS_STATUSES = ["Active", "Expired", "Pending"] as const;
+const PASS_STATUSES = ["Active", "Out", "Returned", "Expired", "Pending"] as const;
 
 function parseTimeToday(value: string) {
   if (!/^\d{2}:\d{2}$/.test(value)) {
@@ -29,7 +29,20 @@ function parseTimeToday(value: string) {
   return date;
 }
 
-function derivePassStatus(timeOut: Date, timeIn: Date, now = new Date()) {
+function derivePassStatus(timeOut: Date, timeIn: Date, now = new Date(), currentStatus?: string) {
+  // If pass is already manually scanned, keep the state unless it's expired by timeIn
+  if (currentStatus === "Returned" || currentStatus === "Expired") {
+    return currentStatus;
+  }
+
+  // If the pass is Out, we shouldn't revert it to Active or Pending
+  if (currentStatus === "Out") {
+    if (timeIn <= now) {
+      return "Expired" as const; // Or maybe "Out" forever, but let's say "Expired" if they didn't return
+    }
+    return "Out" as const;
+  }
+
   if (timeIn <= now) {
     return "Expired" as const;
   }
@@ -143,7 +156,7 @@ export async function GET(req: Request) {
           ? formatTime(pass.timeIn)
           : pass.timeIn,
         status: pass.timeOut instanceof Date && pass.timeIn instanceof Date
-          ? derivePassStatus(pass.timeOut, pass.timeIn, now)
+          ? derivePassStatus(pass.timeOut, pass.timeIn, now, pass.status)
           : pass.status,
       }));
 

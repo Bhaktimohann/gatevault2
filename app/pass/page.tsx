@@ -61,13 +61,12 @@ export default function PassPage() {
 
   const passData = pass || { place: data.date, timeOut: data.from, timeIn: data.to };
 
-  // ⏳ TIMER (10 MIN)
   const [timeLeft, setTimeLeft] = useState(600);
-  const [expired, setExpired] = useState(false);
+  const [expiredLocal, setExpiredLocal] = useState(false);
 
   useEffect(() => {
     if (timeLeft <= 0) {
-      setExpired(true);
+      setExpiredLocal(true);
       return;
     }
 
@@ -80,6 +79,9 @@ export default function PassPage() {
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
+
+  const actualStatus = pass?.status || "Active";
+  const isInvalid = expiredLocal || actualStatus === "Expired" || actualStatus === "Returned";
 
   return (
     <div className="mobile-shell-outer">
@@ -103,10 +105,10 @@ export default function PassPage() {
           {/* STATUS */}
           <div className="mb-2">
             <span
-              className={`text-[10px] px-3 py-1 rounded-full text-white ${expired ? "bg-red-500" : "bg-green-500"
+              className={`text-[10px] px-3 py-1 rounded-full text-white ${isInvalid ? "bg-red-500" : actualStatus === "Out" ? "bg-purple-500" : actualStatus === "Pending" ? "bg-orange-500" : "bg-green-500"
                 }`}
             >
-              {expired ? "Expired" : "Active"}
+              {isInvalid ? (actualStatus === "Returned" ? "Returned" : "Expired") : actualStatus}
             </span>
           </div>
 
@@ -149,9 +151,9 @@ export default function PassPage() {
 
           </div>
 
-          {/* 🔥 QR (DISAPPEARS AFTER EXPIRY) */}
+          {/* 🔥 QR (DISAPPEARS AFTER RETURNED OR EXPIRED) */}
           <div className="flex justify-center mb-3 h-[170px] items-center">
-            {!expired && (
+            {!isInvalid && (
               <div className="p-2 bg-white border rounded-xl">
                 <QRCodeSVG value={pass ? `gatepass-${pass._id}` : data.qr} size={150} />
               </div>
@@ -160,8 +162,8 @@ export default function PassPage() {
 
           {/* ⏳ COUNTDOWN */}
           <p className="text-sm text-center font-semibold mb-3">
-            {expired
-              ? "Pass Expired"
+            {isInvalid
+              ? (actualStatus === "Returned" ? "Pass Completed" : "Pass Expired")
               : `Expires in ${minutes}:${seconds
                 .toString()
                 .padStart(2, "0")}`}

@@ -35,7 +35,7 @@ const PassSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["Active", "Expired", "Pending"],
+      enum: ["Active", "Out", "Returned", "Expired", "Pending"],
       default: "Active",
     },
   },

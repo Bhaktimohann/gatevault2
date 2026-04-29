@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MobileLayout } from "@/components/MobileLayout";
 import { PageSkeleton } from "@/components/LoadingSkeleton";
+import { usePasses } from "@/hooks/usePasses";
 
 export default function StudentStatusPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { passes, loading } = usePasses();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -16,9 +18,12 @@ export default function StudentStatusPage() {
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return <PageSkeleton />;
   }
+
+  const latestPass = passes?.[0];
+  const isOut = latestPass?.status === "Out";
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -48,9 +53,9 @@ export default function StudentStatusPage() {
           </div>
 
           <div className="flex justify-center mt-4">
-            <div className="flex items-center gap-2 bg-green-100 text-green-600 px-4 py-2 rounded-full text-xs font-semibold shadow-sm">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
-              IN HOSTEL
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold shadow-sm ${isOut ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600'}`}>
+              <span className={`w-2 h-2 rounded-full animate-ping ${isOut ? 'bg-purple-500' : 'bg-green-500'}`}></span>
+              {isOut ? 'OUT OF CAMPUS' : 'IN HOSTEL'}
             </div>
           </div>
 

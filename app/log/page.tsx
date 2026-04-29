@@ -49,6 +49,8 @@ export default function LogPage() {
 
   const statusColor = (status: string) => {
     if (status === "Active") return "bg-green-500";
+    if (status === "Out") return "bg-purple-500";
+    if (status === "Returned") return "bg-teal-500";
     if (status === "Pending") return "bg-yellow-500";
     return "bg-red-500";
   };
@@ -95,7 +97,7 @@ export default function LogPage() {
 
           {/* 📊 FILTERS */}
           <div className="flex gap-2 mb-4 text-xs flex-wrap">
-            {["All", "Active", "Pending", "Expired"].map((f) => (
+            {["All", "Active", "Out", "Returned", "Pending", "Expired"].map((f) => (
               <button
                 key={f}
                 onClick={() => handleFilterChange(f)}
