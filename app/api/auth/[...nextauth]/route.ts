@@ -5,44 +5,57 @@ import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
 
-export const authOptions: AuthOptions = {
-  providers: [
+const authProviders = [];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  authProviders.push(
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "text", placeholder: "you@gmail.com" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials.password) {
-          throw new Error("Invalid credentials");
-        }
-
-        await dbConnect();
-
-        const user = await User.findOne({ email: credentials.email });
-
-        if (!user || !user.password) {
-          throw new Error("Please sign up with credentials first");
-        }
-
-        const isCorrectPassword = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isCorrectPassword) {
-          throw new Error("Invalid credentials");
-        }
-
-        return user;
-      }
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     })
-  ],
+  );
+}
+
+authProviders.push(
+  CredentialsProvider({
+    name: "Credentials",
+    credentials: {
+      email: { label: "Email", type: "text", placeholder: "you@gmail.com" },
+      password: { label: "Password", type: "password" }
+    },
+    async authorize(credentials) {
+      const email = credentials?.email?.trim().toLowerCase();
+      const password = credentials?.password;
+
+      if (!email || !password) {
+        throw new Error("Invalid credentials");
+      }
+
+      await dbConnect();
+
+      const user = await User.findOne({ email }).lean();
+
+      if (!user || !user.password) {
+        throw new Error("Please sign up with credentials first");
+      }
+
+      const isCorrectPassword = await bcrypt.compare(password, user.password);
+
+      if (!isCorrectPassword) {
+        throw new Error("Invalid credentials");
+      }
+
+      return {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+      };
+    }
+  })
+);
+
+export const authOptions: AuthOptions = {
+  providers: authProviders,
   pages: {
     signIn: "/login",
   },
@@ -54,11 +67,17 @@ export const authOptions: AuthOptions = {
       if (account?.provider === "google") {
         await dbConnect();
         try {
-          const existingUser = await User.findOne({ email: user.email });
+          const email = user.email?.trim().toLowerCase();
+
+          if (!email) {
+            return false;
+          }
+
+          const existingUser = await User.findOne({ email });
           if (!existingUser) {
             await User.create({
               name: user.name,
-              email: user.email,
+              email,
             });
           }
           return true;
@@ -81,13 +100,13 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user, account }) {
       if (account?.provider === "google" && user?.email) {
         await dbConnect();
-        const dbUser = await User.findOne({ email: user.email });
+        const dbUser = await User.findOne({ email: user.email.trim().toLowerCase() });
         if (dbUser) {
           token.sub = dbUser._id.toString();
         }
       } else if (user) {
         await dbConnect();
-        const dbUser = await User.findOne({ email: user.email });
+        const dbUser = await User.findOne({ email: user.email?.trim().toLowerCase() });
         if (dbUser) {
           token.sub = dbUser._id.toString();
         }

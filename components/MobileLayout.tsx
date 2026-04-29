@@ -17,8 +17,8 @@ export function MobileLayout({ children, bgGradient = "orange" }: MobileLayoutPr
     : "bottom-[-120px] right-[-80px] w-[520px] h-[380px]";
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
-      <div className="w-[390px] h-[844px] bg-[#f4f1ea] relative overflow-hidden rounded-[30px] shadow-2xl">
+    <div className="mobile-shell-outer">
+      <div className="mobile-shell">
         <div className={`absolute ${positionClass} ${gradientClass} rounded-tl-[200px]`} />
         {children}
       </div>

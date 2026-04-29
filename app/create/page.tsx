@@ -71,10 +71,10 @@ export default function CreatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+    <div className="mobile-shell-outer">
 
       {/* FRAME */}
-      <div className="w-[390px] h-[844px] bg-[#f4f1ea] relative overflow-hidden rounded-[30px] shadow-2xl">
+      <div className="mobile-shell">
 
         {/* ORANGE BACKGROUND */}
         <div className="absolute bottom-[-100px] right-[-50px] w-[500px] h-[350px] 
@@ -83,9 +83,8 @@ export default function CreatePage() {
         {/* FORM CARD */}
         <form
           onSubmit={handleSubmit}
-          className="absolute top-[8%] left-1/2 -translate-x-1/2 w-[330px] 
-          bg-white/85 backdrop-blur-xl border border-white/60 
-          rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.12)]"
+          className="glass-card absolute top-[8%] left-1/2 w-[min(330px,calc(100%-32px))]
+          -translate-x-1/2 rounded-3xl p-6 text-gray-800"
         >
 
           {/* TOP BLOB */}
@@ -208,7 +207,7 @@ export default function CreatePage() {
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="w-1/2 bg-gray-100 py-3 rounded-xl text-sm 
+              className="w-1/2 bg-gray-100 py-3 rounded-xl text-sm text-gray-700
               hover:scale-105 active:scale-95 transition"
             >
               Back

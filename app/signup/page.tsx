@@ -100,13 +100,13 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+    <div className="mobile-shell-outer">
 
       {/* MOBILE FRAME */}
-      <div className="w-[390px] h-[844px] bg-[#f4f1ea] relative overflow-hidden rounded-[30px] shadow-2xl">
+      <div className="mobile-shell">
 
         {/* 🔥 ANIMATED BLUE BACKGROUND (FIXED) */}
-        <div className="absolute bottom-[-120px] right-[-80px] w-[520px] h-[380px] bg-gradient-to-br from-blue-400 to-blue-600 rounded-tl-[200px] animate-[floatWave_8s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-120px] right-[-80px] w-[520px] h-[380px] bg-gradient-to-br from-blue-400 to-blue-600 rounded-tl-[200px] animate-[floatWave_8s_ease-in-out_infinite] -z-10" />
 
 
 
@@ -119,7 +119,7 @@ export default function SignupPage() {
         </div>
 
         {/* 🔥 TOGGLE */}
-        <div className="absolute top-[16%] left-1/2 -translate-x-1/2 w-[340px] bg-gray-200 rounded-xl p-1 flex">
+        <div className="absolute top-[16%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-xl bg-gray-200 p-1 flex">
           <button
             onClick={() => router.push("/login")}
             className="w-1/2 py-2 text-sm text-gray-500"
@@ -133,7 +133,7 @@ export default function SignupPage() {
         </div>
 
         {/* 🔥 CARD */}
-        <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[340px] bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-[0_15px_50px_rgba(0,0,0,0.15)]">
+        <div className="glass-card absolute top-[26%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-6 text-gray-800">
 
           <h2 className="text-lg font-semibold text-gray-800 mb-2">
             Create Account
@@ -148,7 +148,7 @@ export default function SignupPage() {
               onChange={handleChange}
               type="text"
               placeholder="John Doe"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
             />
           </div>
 
@@ -161,7 +161,7 @@ export default function SignupPage() {
               onChange={handleChange}
               type="email"
               placeholder="yourname@gmail.com"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
             />
           </div>
 
@@ -175,7 +175,7 @@ export default function SignupPage() {
               type="tel"
               maxLength={10}
               placeholder="9876543210"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
             />
           </div>
 
@@ -188,7 +188,7 @@ export default function SignupPage() {
               onChange={handleChange}
               type={showPassword ? "text" : "password"}
               placeholder="********"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
             />
             <span
               onClick={() => setShowPassword(!showPassword)}
@@ -207,7 +207,7 @@ export default function SignupPage() {
               onChange={handleChange}
               type="password"
               placeholder="********"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
             />
           </div>
 
@@ -232,5 +232,6 @@ export default function SignupPage() {
 
         </div>
       </div>
-
-      
+    </div>
+  );
+}

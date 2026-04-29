@@ -27,7 +27,7 @@ export function BottomNav({ activeTab = "home", color = "orange" }: BottomNavPro
   const isActive = (key: "home" | "log" | "settings") => pathname === navItems.find(n => n.key === key)?.href;
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[320px] bg-white/90 backdrop-blur-xl rounded-2xl flex justify-around py-3 shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
+    <div className="bottom-nav-shell absolute bottom-4 left-1/2 w-[min(320px,calc(100%-32px))] -translate-x-1/2 rounded-2xl flex justify-around py-3">
       {navItems.map((item) => {
         const active = isActive(item.key);
         return (

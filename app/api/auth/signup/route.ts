@@ -6,27 +6,54 @@ import bcrypt from "bcryptjs";
 export async function POST(req: Request) {
   try {
     const { name, email, phone, password } = await req.json();
+    const normalizedName = name?.trim();
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedPhone = phone?.replace(/\D/g, "");
 
-    if (!name || !email || !phone || !password) {
+    if (!normalizedName || !normalizedEmail || !normalizedPhone || !password) {
       return NextResponse.json({ message: "All fields are required" }, { status: 400 });
+    }
+
+    if (normalizedName.length < 3) {
+      return NextResponse.json({ message: "Name must be at least 3 characters" }, { status: 400 });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return NextResponse.json({ message: "Enter a valid email address" }, { status: 400 });
+    }
+
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(normalizedPhone)) {
+      return NextResponse.json({ message: "Enter a valid 10-digit phone number" }, { status: 400 });
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json({ message: "Password must be at least 6 characters" }, { status: 400 });
     }
 
     await dbConnect();
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      return NextResponse.json({ message: "User already exists with this email" }, { status: 400 });
+      if (existingUser.password) {
+        return NextResponse.json({ message: "User already exists with this email" }, { status: 400 });
+      }
+
+      existingUser.name = normalizedName;
+      existingUser.phone = normalizedPhone;
+      existingUser.password = await bcrypt.hash(password, 10);
+      await existingUser.save();
+
+      return NextResponse.json({ message: "Account completed successfully" }, { status: 200 });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const newUser = await User.create({
-      name,
-      email,
-      phone,
+    await User.create({
+      name: normalizedName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
       password: hashedPassword,
     });
 

@@ -32,7 +32,7 @@ export default function ProfilePage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+      <div className="mobile-shell-outer">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
@@ -55,16 +55,16 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+    <div className="mobile-shell-outer">
 
       {/* MOBILE FRAME */}
-      <div className="w-[390px] h-[844px] bg-[#f4f1ea] relative overflow-hidden rounded-[30px] shadow-2xl">
+      <div className="mobile-shell">
 
         {/* 🔥 BACKGROUND */}
         <div className="absolute bottom-[-100px] right-[-50px] w-[500px] h-[350px] bg-gradient-to-r from-orange-400 to-orange-600 rounded-tl-[200px]" />
 
         {/* 🔥 MAIN CARD */}
-        <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-[320px] bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_40px_rgba(0,0,0,0.1)] animate-[slideUp_0.6s_ease, float_4s_ease-in-out_infinite]">
+        <div className="glass-card absolute top-[18%] left-1/2 w-[min(320px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-5 text-gray-800 animate-[slideUp_0.6s_ease, float_4s_ease-in-out_infinite]">
 
           {/* TOP BLOB */}
           <div className="absolute top-0 right-0 w-16 h-14 bg-orange-400 rounded-bl-[40px]" />
@@ -133,7 +133,7 @@ export default function ProfilePage() {
         </div>
 
         {/* 🔥 NAVBAR */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[320px] bg-white/80 backdrop-blur-xl rounded-2xl flex justify-around py-3 shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
+        <div className="bottom-nav-shell absolute bottom-4 left-1/2 flex w-[min(320px,calc(100%-32px))] -translate-x-1/2 justify-around rounded-2xl py-3">
 
           {/* HOME */}
           <div

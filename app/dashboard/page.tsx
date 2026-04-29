@@ -34,10 +34,10 @@ export default function Dashboard() {
   const handleLogout = () => signOut({ callbackUrl: "/login" });
 
   return (
-    <div className="min-h-screen bg-[#e9edf5] flex items-center justify-center">
+    <div className="mobile-shell-outer dashboard-shell-outer">
 
       {/* MOBILE FRAME */}
-      <div className="w-[390px] h-[844px] bg-[#e9edf5] relative overflow-hidden rounded-[30px] shadow-2xl">
+      <div className="mobile-shell dashboard-shell">
 
         {/* 🔥 THEA BLUE WAVE BACKGROUND */}
         <div className="absolute bottom-0 left-0 w-full h-[220px] overflow-hidden">
@@ -69,7 +69,7 @@ export default function Dashboard() {
         </div>
 
         {/* 🔥 MAIN CARD */}
-        <div className="absolute top-[18%] left-1/2 -translate-x-1/2 w-[320px] bg-white/90 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_40px_rgba(0,0,0,0.1)]">
+        <div className="glass-card absolute top-[18%] left-1/2 w-[min(320px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-5 text-gray-800">
 
           {/* TOP BLOB */}
           <div className="absolute top-0 right-0 w-16 h-14 bg-blue-500 rounded-bl-[40px]" />
@@ -94,7 +94,7 @@ export default function Dashboard() {
 
               {/* INNER CARD */}
               <div className="bg-gray-100 rounded-2xl p-4 mt-4">
-                <div className="flex justify-between mb-3">
+                <div className="flex justify-between mb-3 gap-3">
                   <div>
                     <p className="text-blue-500 text-xs">Time Out</p>
                     <p className="text-sm font-semibold">{latestPass.timeOut}</p>
@@ -104,7 +104,7 @@ export default function Dashboard() {
                   </p>
                 </div>
 
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <div>
                     <p className="text-blue-500 text-xs">Time In</p>
                     <p className="text-sm font-semibold">{latestPass.timeIn}</p>
@@ -179,7 +179,7 @@ export default function Dashboard() {
         </div>
 
         {/* 🔥 NAVBAR */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[320px] bg-white/90 backdrop-blur-xl rounded-2xl flex justify-around py-3 shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
+        <div className="bottom-nav-shell absolute bottom-4 left-1/2 flex w-[min(320px,calc(100%-32px))] -translate-x-1/2 justify-around rounded-2xl py-3">
 
           <div className="flex flex-col items-center text-blue-500 relative">
             <div className="absolute -bottom-1 w-6 h-1 bg-blue-500 rounded-full"></div>

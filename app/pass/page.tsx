@@ -53,7 +53,7 @@ export default function PassPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+      <div className="mobile-shell-outer">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
@@ -82,10 +82,10 @@ export default function PassPage() {
   const seconds = timeLeft % 60;
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+    <div className="mobile-shell-outer">
 
       {/* MOBILE FRAME */}
-      <div className="w-[390px] h-[844px] bg-[#f4f1ea] relative overflow-hidden rounded-[30px] shadow-2xl">
+      <div className="mobile-shell">
 
         {/* 🔥 DARK HEADER */}
         <div className="bg-gradient-to-r from-[#0f0f0f] via-[#1a1a1a] to-[#000000] h-[260px] px-6 pt-10 text-white rounded-b-[40px] relative">
@@ -98,7 +98,7 @@ export default function PassPage() {
         <div className="absolute bottom-0 left-0 w-24 h-20 bg-orange-500 rounded-tr-[60px]" />
 
         {/* 🔥 FLOATING CARD (Animation removed, card is now static) */}
-        <div className="absolute top-[140px] left-1/2 -translate-x-1/2 w-[310px] bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-[0_10px_40px_rgba(0,0,0,0.1)]">
+        <div className="glass-card absolute top-[140px] left-1/2 w-[min(310px,calc(100%-40px))] -translate-x-1/2 rounded-3xl p-5 text-gray-800">
 
           {/* STATUS */}
           <div className="mb-2">

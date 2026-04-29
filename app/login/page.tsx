@@ -50,10 +50,10 @@ export default function LoginPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center px-4">
+    <div className="mobile-shell-outer">
 
       {/* MOBILE FRAME */}
-      <div className="w-[390px] h-[844px] bg-[#f4f1ea] relative overflow-hidden rounded-[30px] shadow-2xl">
+      <div className="mobile-shell">
 
         {/* 🔥 ANIMATED BLUE BACKGROUND */}
         <div className="absolute bottom-[-120px] right-[-80px] w-[520px] h-[380px] bg-gradient-to-br from-blue-400 to-blue-600 rounded-tl-[200px] animate-[floatWave_8s_ease-in-out_infinite]" />
@@ -67,7 +67,7 @@ export default function LoginPage() {
         </div>
 
         {/* 🔥 TOGGLE BUTTON */}
-        <div className="absolute top-[16%] left-1/2 -translate-x-1/2 w-[340px] bg-gray-200 rounded-xl p-1 flex">
+        <div className="absolute top-[16%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-xl bg-gray-200 p-1 flex">
           <button className="w-1/2 bg-white py-2 rounded-xl text-sm font-medium shadow">
             Sign in
           </button>
@@ -80,7 +80,7 @@ export default function LoginPage() {
         </div>
 
         {/* 🔥 LOGIN CARD */}
-        <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[340px] bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-[0_15px_50px_rgba(0,0,0,0.15)]">
+        <div className="glass-card absolute top-[26%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-6 text-gray-800">
 
           {/* 🔥 GOOGLE LOGIN */}
           <button
@@ -91,7 +91,7 @@ export default function LoginPage() {
               src="https://www.svgrepo.com/show/475656/google-color.svg"
               className="h-5"
             />
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium text-gray-800">
               Sign in with Google
             </span>
           </button>
@@ -109,7 +109,7 @@ export default function LoginPage() {
             value={email}
             onChange={handleEmailChange}
             placeholder="Email"
-            className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
 
           {/* PASSWORD */}
@@ -118,11 +118,11 @@ export default function LoginPage() {
             value={password}
             onChange={handlePasswordChange}
             placeholder="Password"
-            className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
 
           {/* REMEMBER + FORGOT */}
-          <div className="flex justify-between items-center mb-4 text-xs">
+          <div className="flex justify-between items-center mb-4 text-xs text-gray-600">
             <label className="flex items-center gap-2">
               <input type="checkbox" defaultChecked />
               Remember me
