@@ -2,7 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,7 +11,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  }, []);
+
+  const handleLogin = useCallback(async () => {
     if (!email || !password) {
       alert("Please enter email and password");
       return;
@@ -31,7 +39,15 @@ export default function LoginPage() {
     } else {
       router.push("/dashboard");
     }
-  };
+  }, [email, password, router]);
+
+  const handleGoogleLogin = useCallback(() => {
+    signIn("google", { callbackUrl: "/dashboard" });
+  }, []);
+
+  const handleSignupClick = useCallback(() => {
+    router.push("/signup");
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center px-4">
@@ -56,7 +72,7 @@ export default function LoginPage() {
             Sign in
           </button>
           <button
-            onClick={() => router.push("/signup")}
+            onClick={handleSignupClick}
             className="w-1/2 py-2 text-sm text-gray-500"
           >
             Sign up
@@ -68,7 +84,7 @@ export default function LoginPage() {
 
           {/* 🔥 GOOGLE LOGIN */}
           <button
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={handleGoogleLogin}
             className="w-full border border-gray-300 rounded-full py-3 px-3 flex items-center justify-center gap-2 hover:bg-gray-50 transition"
           >
             <img
@@ -91,7 +107,7 @@ export default function LoginPage() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={handleEmailChange}
             placeholder="Email"
             className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
@@ -100,7 +116,7 @@ export default function LoginPage() {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={handlePasswordChange}
             placeholder="Password"
             className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
@@ -133,7 +149,7 @@ export default function LoginPage() {
 
           {/* CREATE ACCOUNT */}
           <button
-            onClick={() => router.push("/signup")}
+            onClick={handleSignupClick}
             className="w-full bg-gradient-to-r from-purple-400 to-purple-500 text-white py-3 rounded-full text-sm font-medium"
           >
             Create a new account

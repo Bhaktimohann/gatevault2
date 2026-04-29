@@ -20,11 +20,11 @@ const PassSchema = new Schema(
       required: true,
     },
     timeOut: {
-      type: String,
+      type: Date,
       required: true,
     },
     timeIn: {
-      type: String,
+      type: Date,
       required: true,
     },
     person: {
@@ -43,6 +43,9 @@ const PassSchema = new Schema(
     timestamps: true,
   }
 );
+
+PassSchema.index({ user: 1, createdAt: -1 });
+PassSchema.index({ status: 1 });
 
 const Pass = models.Pass || model("Pass", PassSchema);
 

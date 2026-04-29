@@ -2,22 +2,41 @@
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Home, Settings, LogOut, Edit } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   const [user, setUser] = useState({
-    name: "BHUPENDRA JOGI",
-    email: "bhupendrajogi@university.edu",
-    phone: "+91 9876543210",
-    semester: "6th",
-    section: "A",
-    hostel: "usa",
-    room: "203",
-    image: "/sukuna.webp",
+    name: "",
+    email: "",
+    phone: "",
+    image: "/set2.png",
   });
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated" && session?.user) {
+      setUser({
+        name: session.user.name || "",
+        email: session.user.email || "",
+        phone: "",
+        image: "/set2.png",
+      });
+    }
+  }, [status, session, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   // 🔥 IMAGE CHANGE HANDLER
   const handleImageChange = (e: any) => {
@@ -90,30 +109,7 @@ export default function ProfilePage() {
   <p className="text-xs text-gray-500 mt-1">{user.phone}</p>
 </div>
 
-          {/* 🔥 DETAILS CARD */}
-          <div className="bg-gray-100 rounded-2xl p-4 mt-4 text-sm">
-
-            <div className="flex justify-between mb-2">
-              <span className="text-orange-500 text-xs">Semester</span>
-              <span className="font-semibold">{user.semester}</span>
-            </div>
-
-            <div className="flex justify-between mb-2">
-              <span className="text-orange-500 text-xs">Section</span>
-              <span className="font-semibold">{user.section}</span>
-            </div>
-
-            <div className="flex justify-between mb-2">
-              <span className="text-orange-500 text-xs">Hostel</span>
-              <span className="font-semibold">{user.hostel}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-orange-500 text-xs">Room</span>
-              <span className="font-semibold">{user.room}</span>
-            </div>
-
-          </div>
+          
 
           {/* 🔥 VIEW ACTIVITY */}
           <div
@@ -125,7 +121,7 @@ export default function ProfilePage() {
 
           {/* 🔥 LOGOUT */}
           <div
-            onClick={() => router.push("/login")}
+            onClick={() => signOut({ callbackUrl: "/login" })}
             className="bg-gray-100 rounded-xl mt-4 py-4 flex flex-col items-center cursor-pointer"
           >
             <LogOut size={18} className="text-red-500" />

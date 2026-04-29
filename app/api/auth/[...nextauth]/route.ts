@@ -27,7 +27,7 @@ export const authOptions: AuthOptions = {
         const user = await User.findOne({ email: credentials.email });
 
         if (!user || !user.password) {
-          throw new Error("Invalid credentials");
+          throw new Error("Please sign up with credentials first");
         }
 
         const isCorrectPassword = await bcrypt.compare(
@@ -86,7 +86,11 @@ export const authOptions: AuthOptions = {
           token.sub = dbUser._id.toString();
         }
       } else if (user) {
-        token.sub = user.id;
+        await dbConnect();
+        const dbUser = await User.findOne({ email: user.email });
+        if (dbUser) {
+          token.sub = dbUser._id.toString();
+        }
       }
 
       if (user) {

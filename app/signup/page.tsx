@@ -47,8 +47,9 @@ export default function SignupPage() {
       return;
     }
 
-    if (!form.email.endsWith("@gmail.com")) {
-      alert("Use a @gmail.com email only");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      alert("Enter a valid email address");
       return;
     }
 
@@ -232,21 +233,4 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* 🔥 ANIMATION KEYFRAMES */}
-      <style jsx>{`
-  @keyframes floatWave {
-    0% {
-      transform: translateY(0px) translateX(0px);
-    }
-    50% {
-      transform: translateY(-10px) translateX(-10px);
-    }
-    100% {
-      transform: translateY(0px) translateX(0px);
-    }
-  }
-`}</style>
-
-    </div>
-  );
-}
+      

@@ -19,11 +19,28 @@ const UserSchema = new Schema(
       type: String,
       required: false,
     },
+    semester: {
+      type: String,
+    },
+    section: {
+      type: String,
+    },
+    hostel: {
+      type: String,
+    },
+    room: {
+      type: String,
+    },
+    avatar: {
+      type: String,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+UserSchema.index({ email: 1 });
 
 const User = models.User || model("User", UserSchema);
 

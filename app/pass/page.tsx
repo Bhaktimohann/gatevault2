@@ -3,10 +3,17 @@
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 export default function PassPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const passId = searchParams.get("id");
+  const { data: session, status } = useSession();
+
+  const [pass, setPass] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const data = {
     date: "Apr 8",
@@ -15,8 +22,47 @@ export default function PassPage() {
     qr: "gatepass-123",
   };
 
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+
+    if (status === "authenticated" && passId) {
+      async function fetchPass() {
+        try {
+          const res = await fetch("/api/passes");
+          if (res.ok) {
+            const data = await res.json();
+            const foundPass = data.passes?.find((p: any) => p._id === passId);
+            if (foundPass) {
+              setPass(foundPass);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch pass:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+      fetchPass();
+    } else {
+      setLoading(false);
+    }
+  }, [status, passId, router]);
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  const passData = pass || { place: data.date, timeOut: data.from, timeIn: data.to };
+
   // ⏳ TIMER (10 MIN)
-  const [timeLeft, setTimeLeft] = useState(600); // Set to 600 for 10 minutes
+  const [timeLeft, setTimeLeft] = useState(600);
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
@@ -79,7 +125,7 @@ export default function PassPage() {
             </div>
 
             <p className="text-lg font-bold text-gray-700">
-              {data.date}
+              {pass ? new Date(pass.createdAt).toLocaleDateString() : data.date}
             </p>
           </div>
 
@@ -88,7 +134,7 @@ export default function PassPage() {
 
             <div>
               <p className="text-xs text-gray-400">Valid from</p>
-              <p className="text-lg font-bold">{data.from}</p>
+              <p className="text-lg font-bold">{passData.timeOut}</p>
             </div>
 
             {/* Emoji is kept here but movement and extra classes are removed */}
@@ -98,7 +144,7 @@ export default function PassPage() {
 
             <div>
               <p className="text-xs text-gray-400">Valid to</p>
-              <p className="text-lg font-bold">{data.to}</p>
+              <p className="text-lg font-bold">{passData.timeIn}</p>
             </div>
 
           </div>
@@ -107,7 +153,7 @@ export default function PassPage() {
           <div className="flex justify-center mb-3 h-[170px] items-center">
             {!expired && (
               <div className="p-2 bg-white border rounded-xl">
-                <QRCodeSVG value={data.qr} size={150} />
+                <QRCodeSVG value={pass ? `gatepass-${pass._id}` : data.qr} size={150} />
               </div>
             )}
           </div>

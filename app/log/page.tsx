@@ -1,56 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Info, Settings } from "lucide-react";
-
-const logsData = [
-  {
-    title: "Dinner",
-    out: "17:57",
-    in: "21:00",
-    date: "04 April 2026",
-    status: "Expired",
-  },
-  {
-    title: "Library",
-    out: "10:00",
-    in: "14:00",
-    date: "05 April 2026",
-    status: "Approved",
-  },
-  {
-    title: "Market",
-    out: "16:00",
-    in: "18:00",
-    date: "06 April 2026",
-    status: "Pending",
-  },
-];
+import { Home, Info, Settings, AlertCircle } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { usePasses } from "@/hooks/usePasses";
+import { Pass } from "@/types";
 
 export default function LogPage() {
   const router = useRouter();
   const path = usePathname();
+  const { status } = useSession();
+  const { passes, loading, error, refetch } = usePasses();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
 
-  const filteredLogs = logsData.filter((log) => {
-    const matchSearch = log.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  }, []);
 
-    const matchFilter =
-      filter === "All" || log.status === filter;
+  const handleFilterChange = useCallback((f: string) => {
+    setFilter(f);
+  }, []);
 
-    return matchSearch && matchFilter;
-  });
+  const filteredLogs = useMemo(() => {
+    return passes.filter((log: Pass) => {
+      const matchSearch = log.place
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const matchFilter = filter === "All" || log.status === filter;
+      return matchSearch && matchFilter;
+    });
+  }, [passes, search, filter]);
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
 
   const statusColor = (status: string) => {
-    if (status === "Approved") return "bg-green-500";
+    if (status === "Active") return "bg-green-500";
     if (status === "Pending") return "bg-yellow-500";
     return "bg-red-500";
   };
+
+  const handleLogClick = useCallback((passId: string) => {
+    router.push(`/pass?id=${passId}`);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-[#f4f1ea] flex items-center justify-center">
@@ -76,16 +81,24 @@ export default function LogPage() {
           <input
             placeholder="Search logs..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             className="w-full mb-3 p-3 rounded-xl bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
           />
 
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-lg mb-3">
+              <AlertCircle size={16} />
+              <p className="text-xs">{error}</p>
+              <button onClick={refetch} className="ml-auto text-xs underline">Retry</button>
+            </div>
+          )}
+
           {/* 📊 FILTERS */}
           <div className="flex gap-2 mb-4 text-xs flex-wrap">
-            {["All", "Approved", "Pending", "Expired"].map((f) => (
+            {["All", "Active", "Pending", "Expired"].map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => handleFilterChange(f)}
                 className={`px-3 py-1 rounded-full transition ${
                   filter === f
                     ? "bg-orange-500 text-white"
@@ -100,25 +113,25 @@ export default function LogPage() {
           {/* 📋 LOG LIST */}
           <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
 
-            {filteredLogs.map((log, index) => (
+            {filteredLogs.map((log: Pass, index: number) => (
               <div
-                key={index}
-                onClick={() => router.push("/pass")}
+                key={log._id || index}
+                onClick={() => handleLogClick(log._id)}
                 className="flex justify-between items-center p-3 rounded-xl bg-gray-100 hover:scale-[1.02] transition cursor-pointer"
               >
                 <div>
-                  <p className="font-medium text-sm">{log.title}</p>
+                  <p className="font-medium text-sm">{log.place}</p>
                   <p className="text-xs text-gray-500">
-                    Out: {log.out}
+                    Out: {log.timeOut}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {log.date}
+                    {new Date(log.createdAt).toLocaleDateString()}
                   </p>
                 </div>
 
                 <div className="text-right">
                   <p className="text-xs text-gray-500">
-                    In: {log.in}
+                    In: {log.timeIn}
                   </p>
                   <span
                     className={`${statusColor(

@@ -8,27 +8,30 @@ import {
   Home,
   User,
   Bell,
+  AlertCircle,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { usePasses } from "@/hooks/usePasses";
+import { Pass } from "@/types";
+import { PageSkeleton } from "@/components/LoadingSkeleton";
 
 export default function Dashboard() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const [passes, setPasses] = useState<any[]>([]);
+  const { data: session, status } = useSession();
+  const { passes, loading, error, refetch } = usePasses();
 
-  useEffect(() => {
-    async function fetchPasses() {
-      const res = await fetch("/api/passes");
-      if (res.ok) {
-        const data = await res.json();
-        setPasses(data.passes || []);
-      }
-    }
-    fetchPasses();
-  }, []);
+  if (status === "loading" || loading) {
+    return <PageSkeleton />;
+  }
 
-  const latestPass = passes[0];
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return null;
+  }
+
+  const latestPass: Pass | undefined = passes[0];
+
+  const handleLogout = () => signOut({ callbackUrl: "/login" });
 
   return (
     <div className="min-h-screen bg-[#e9edf5] flex items-center justify-center">
@@ -70,6 +73,14 @@ export default function Dashboard() {
 
           {/* TOP BLOB */}
           <div className="absolute top-0 right-0 w-16 h-14 bg-blue-500 rounded-bl-[40px]" />
+
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-lg mb-3">
+              <AlertCircle size={16} />
+              <p className="text-xs">{error}</p>
+              <button onClick={refetch} className="ml-auto text-xs underline">Retry</button>
+            </div>
+          )}
 
           {latestPass ? (
             <>
@@ -156,7 +167,7 @@ export default function Dashboard() {
 
           {/* LOGOUT */}
           <div
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={handleLogout}
             className="bg-gray-100 rounded-xl mt-4 py-4 flex flex-col items-center cursor-pointer hover:scale-105 transition"
           >
             <LogOut size={18} className="text-red-500" />
