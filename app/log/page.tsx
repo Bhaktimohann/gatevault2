@@ -7,6 +7,65 @@ import { useSession } from "next-auth/react";
 import { usePasses } from "@/hooks/usePasses";
 import { Pass } from "@/types";
 
+function getLogLabel(log: Pass) {
+  if (log.hodApprovalStatus === "Pending") return "HOD Approval";
+  if (log.hodApprovalStatus === "Rejected") return "HOD Rejected";
+  if (log.passType === "LongLeave" && log.wardenApprovalStatus === "Pending") return "Warden Approval";
+  if (log.passType === "LongLeave" && log.wardenApprovalStatus === "Rejected") return "Warden Rejected";
+  if (log.approvalStatus === "Pending") return "Awaiting Approval";
+  if (log.approvalStatus === "Rejected") return "Rejected";
+  if (log.status === "Out") return "Out";
+  if (log.status === "Returned") return "Returned";
+  if (log.status === "Expired") return "Expired";
+  if (log.status === "Active") return "Approved";
+  return log.status;
+}
+
+function getLogColor(label: string) {
+  if (label === "Approved") return "bg-green-500";
+  if (label === "Out") return "bg-purple-500";
+  if (label === "Returned") return "bg-teal-500";
+  if (label === "Awaiting Approval" || label === "HOD Approval" || label === "Warden Approval") return "bg-yellow-500";
+  if (label === "Rejected" || label === "HOD Rejected" || label === "Warden Rejected" || label === "Expired") return "bg-red-500";
+  return "bg-gray-500";
+}
+
+function getLogMeta(log: Pass) {
+  if (log.scannedInAt) {
+    return `Returned: ${new Date(log.scannedInAt).toLocaleString()}`;
+  }
+
+  if (log.scannedOutAt) {
+    return `Scanned out: ${new Date(log.scannedOutAt).toLocaleString()}`;
+  }
+
+  if (log.approvalStatus === "Rejected") {
+    return "Pass rejected";
+  }
+
+  if (log.hodApprovalStatus === "Rejected") {
+    return "Long leave rejected by HOD";
+  }
+
+  if (log.wardenApprovalStatus === "Rejected") {
+    return "Long leave rejected by warden";
+  }
+
+  if (log.hodApprovalStatus === "Pending") {
+    return "Waiting for HOD approval";
+  }
+
+  if (log.passType === "LongLeave" && log.wardenApprovalStatus === "Pending") {
+    return "Waiting for warden approval";
+  }
+
+  if (log.approvalStatus === "Pending") {
+    return log.passType === "LongLeave" ? "Waiting for warden approval" : "Waiting for admin approval";
+  }
+
+  return `Requested: ${new Date(log.createdAt).toLocaleDateString()}`;
+}
+
 export default function LogPage() {
   const router = useRouter();
   const path = usePathname();
@@ -24,12 +83,16 @@ export default function LogPage() {
     setFilter(f);
   }, []);
 
+  const handleLogClick = useCallback((passId: string) => {
+    router.push(`/pass?id=${passId}`);
+  }, [router]);
+
   const filteredLogs = useMemo(() => {
     return passes.filter((log: Pass) => {
-      const matchSearch = log.place
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      const matchFilter = filter === "All" || log.status === filter;
+      const label = getLogLabel(log);
+      const searchText = [log.place, log.purpose, label, log.passType].filter(Boolean).join(" ").toLowerCase();
+      const matchSearch = searchText.includes(search.toLowerCase());
+      const matchFilter = filter === "All" || label === filter;
       return matchSearch && matchFilter;
     });
   }, [passes, search, filter]);
@@ -47,18 +110,6 @@ export default function LogPage() {
     return null;
   }
 
-  const statusColor = (status: string) => {
-    if (status === "Active") return "bg-green-500";
-    if (status === "Out") return "bg-purple-500";
-    if (status === "Returned") return "bg-teal-500";
-    if (status === "Pending") return "bg-yellow-500";
-    return "bg-red-500";
-  };
-
-  const handleLogClick = useCallback((passId: string) => {
-    router.push(`/pass?id=${passId}`);
-  }, [router]);
-
   return (
     <div className="mobile-shell-outer">
 
@@ -69,7 +120,7 @@ export default function LogPage() {
         <div className="absolute bottom-[-100px] right-[-50px] w-[500px] h-[350px] bg-gradient-to-r from-orange-400 to-orange-600 rounded-tl-[200px]" />
 
         {/* 🔥 MAIN CARD */}
-        <div className="glass-card absolute top-[12%] left-1/2 w-[min(320px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-5 text-gray-800 animate-[slideUp_0.6s_ease, float_4s_ease-in-out_infinite]">
+        <div className="glass-card absolute left-1/2 top-8 flex max-h-[calc(100%-112px)] w-[min(340px,calc(100%-32px))] -translate-x-1/2 flex-col rounded-3xl p-5 text-gray-800 animate-[slideUp_0.6s_ease, float_4s_ease-in-out_infinite] sm:w-[min(680px,calc(100%-64px))]">
 
           {/* TOP BLOB */}
           <div className="absolute top-0 right-0 w-16 h-14 bg-orange-400 rounded-bl-[40px]" />
@@ -96,8 +147,8 @@ export default function LogPage() {
           )}
 
           {/* 📊 FILTERS */}
-          <div className="flex gap-2 mb-4 text-xs flex-wrap">
-            {["All", "Active", "Out", "Returned", "Pending", "Expired"].map((f) => (
+          <div className="mb-4 flex max-h-24 flex-wrap gap-2 overflow-y-auto pr-1 text-xs">
+            {["All", "Approved", "Awaiting Approval", "HOD Approval", "Out", "Returned", "Rejected", "HOD Rejected", "Expired"].map((f) => (
               <button
                 key={f}
                 onClick={() => handleFilterChange(f)}
@@ -113,37 +164,36 @@ export default function LogPage() {
           </div>
 
           {/* 📋 LOG LIST */}
-          <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+          <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
 
             {filteredLogs.map((log: Pass, index: number) => (
-              <div
-                key={log._id || index}
-                onClick={() => handleLogClick(log._id)}
-                className="flex justify-between items-center p-3 rounded-xl bg-gray-100 hover:scale-[1.02] transition cursor-pointer"
-              >
-                <div>
-                  <p className="font-medium text-sm">{log.place}</p>
-                  <p className="text-xs text-gray-500">
-                    Out: {log.timeOut}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(log.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">
-                    In: {log.timeIn}
-                  </p>
-                  <span
-                    className={`${statusColor(
-                      log.status
-                    )} text-white text-xs px-2 py-1 rounded-full`}
+              (() => {
+                const label = getLogLabel(log);
+                return (
+                  <div
+                    key={log._id || index}
+                    onClick={() => handleLogClick(log._id)}
+                    className="p-3 rounded-xl bg-gray-100 hover:scale-[1.02] transition cursor-pointer"
                   >
-                    {log.status}
-                  </span>
-                </div>
-              </div>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-medium">{log.place}</p>
+                        <p className="text-xs text-gray-500">{log.passType === "LongLeave" ? "Long Leave" : "Short Pass"}</p>
+                        <p className="mt-1 break-words text-xs text-gray-400">{getLogMeta(log)}</p>
+                      </div>
+
+                      <span className={`${getLogColor(label)} shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-xs text-white`}>
+                        {label}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-500">
+                      <p className="break-words">Out: {log.timeOut}</p>
+                      <p className="break-words text-right">In: {log.timeIn}</p>
+                    </div>
+                  </div>
+                );
+              })()
             ))}
 
             {filteredLogs.length === 0 && (

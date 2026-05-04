@@ -4,6 +4,61 @@ import GoogleProvider from "next-auth/providers/google";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
+import { isEmailAllowedForSignup, isPrivilegedRole } from "@/lib/security";
+
+type DbUser = {
+  _id: { toString(): string };
+  name?: string | null;
+  email: string;
+  role?: string;
+  password?: string;
+  save: () => Promise<unknown>;
+};
+
+type GoogleProfile = {
+  email_verified?: boolean;
+  email_verified_at?: string;
+};
+
+function getRoleForEmail(email: string) {
+  const adminEmails = (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return adminEmails.includes(email) ? "admin" : "student";
+}
+
+async function resolveUserRole(user: DbUser) {
+  if (user.role === "security") {
+    return "security";
+  }
+
+  if (user.role === "hod") {
+    return "hod";
+  }
+
+  if (user.role === "warden") {
+    return "warden";
+  }
+
+  if (getRoleForEmail(user.email) === "admin" || user.role === "admin") {
+    return "admin";
+  }
+
+  return "student";
+}
+
+async function saveResolvedRole(user: DbUser) {
+  const role = await resolveUserRole(user);
+
+  if (role === "admin" && user.role !== "admin") {
+    user.role = "admin";
+    await user.save();
+  }
+
+  return role;
+}
 
 const authProviders = [];
 
@@ -33,10 +88,14 @@ authProviders.push(
 
       await dbConnect();
 
-      const user = await User.findOne({ email }).lean();
+      const user = await User.findOne({ email });
 
       if (!user || !user.password) {
-        throw new Error("Please sign up with credentials first");
+        throw new Error("Invalid credentials");
+      }
+
+      if (!isPrivilegedRole(user.role) && !isEmailAllowedForSignup(email)) {
+        throw new Error("Invalid credentials");
       }
 
       const isCorrectPassword = await bcrypt.compare(password, user.password);
@@ -45,10 +104,13 @@ authProviders.push(
         throw new Error("Invalid credentials");
       }
 
+      const role = await saveResolvedRole(user);
+
       return {
         id: user._id.toString(),
         name: user.name,
         email: user.email,
+        role,
       };
     }
   })
@@ -61,24 +123,49 @@ export const authOptions: AuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60,
+    updateAge: 15 * 60,
+  },
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         await dbConnect();
         try {
           const email = user.email?.trim().toLowerCase();
+          const googleProfile = profile as GoogleProfile | undefined;
 
-          if (!email) {
+          if (!email || googleProfile?.email_verified !== true) {
             return false;
           }
 
           const existingUser = await User.findOne({ email });
+          if (!isEmailAllowedForSignup(email) && !isPrivilegedRole(existingUser?.role)) {
+            console.warn("Rejected Google sign-in for non-allowed email domain");
+            return false;
+          }
+
           if (!existingUser) {
             await User.create({
               name: user.name,
               email,
+              role: getRoleForEmail(email),
             });
+          } else {
+            await saveResolvedRole(existingUser);
           }
           return true;
         } catch (error) {
@@ -93,7 +180,9 @@ export const authOptions: AuthOptions = {
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         // Optionally attach user id to session
-        (session.user as any).id = token.sub;
+        (session.user as typeof session.user & { id?: string; role?: string }).id = token.sub;
+        (session.user as typeof session.user & { id?: string; role?: string }).role =
+          typeof token.role === "string" ? token.role : "student";
       }
       return session;
     },
@@ -103,18 +192,21 @@ export const authOptions: AuthOptions = {
         const dbUser = await User.findOne({ email: user.email.trim().toLowerCase() });
         if (dbUser) {
           token.sub = dbUser._id.toString();
+          token.role = await saveResolvedRole(dbUser);
         }
       } else if (user) {
         await dbConnect();
         const dbUser = await User.findOne({ email: user.email?.trim().toLowerCase() });
         if (dbUser) {
           token.sub = dbUser._id.toString();
+          token.role = await saveResolvedRole(dbUser);
         }
       }
 
       if (user) {
         token.name = user.name;
         token.email = user.email;
+        token.role = (user as { role?: string }).role || token.role || "student";
       }
       return token;
     }

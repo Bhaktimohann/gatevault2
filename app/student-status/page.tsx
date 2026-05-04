@@ -1,11 +1,16 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { MobileLayout } from "@/components/MobileLayout";
 import { PageSkeleton } from "@/components/LoadingSkeleton";
 import { usePasses } from "@/hooks/usePasses";
+import { Pass } from "@/types";
+
+function isCampusOut(pass: Pass) {
+  return pass.status === "Out" || Boolean(pass.scannedOutAt && !pass.scannedInAt);
+}
 
 export default function StudentStatusPage() {
   const router = useRouter();
@@ -23,7 +28,8 @@ export default function StudentStatusPage() {
   }
 
   const latestPass = passes?.[0];
-  const isOut = latestPass?.status === "Out";
+  const campusStatusPass = passes.find(isCampusOut) || latestPass;
+  const isOut = campusStatusPass ? isCampusOut(campusStatusPass) : false;
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -34,7 +40,7 @@ export default function StudentStatusPage() {
 
   return (
     <MobileLayout>
-      <div className="absolute top-[14%] left-1/2 -translate-x-1/2 w-[330px]">
+      <div className="absolute left-1/2 top-8 max-h-[calc(100%-64px)] w-[min(330px,calc(100%-32px))] -translate-x-1/2 overflow-y-auto sm:w-[min(560px,calc(100%-64px))]">
         <div className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)] transition-all duration-300">
           <div className="absolute top-0 right-0 w-16 h-14 bg-orange-400 rounded-bl-[40px]" />
 
@@ -59,18 +65,18 @@ export default function StudentStatusPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 active:scale-95">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+            <div className="rounded-xl bg-white/60 p-3 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 sm:p-4">
               <p className="text-[10px] text-gray-500">Since</p>
               <p className="text-sm font-semibold text-gray-800 mt-1">--:--</p>
             </div>
 
-            <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 active:scale-95">
+            <div className="rounded-xl bg-white/60 p-3 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 sm:p-4">
               <p className="text-[10px] text-gray-500">Activity</p>
               <p className="text-sm font-semibold text-gray-800 mt-1">--</p>
             </div>
 
-            <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 active:scale-95">
+            <div className="rounded-xl bg-white/60 p-3 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:shadow-md active:scale-95 sm:p-4">
               <p className="text-[10px] text-gray-500">Battery</p>
               <p className="text-sm font-semibold text-gray-800 mt-1">--%</p>
             </div>

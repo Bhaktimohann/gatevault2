@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function middleware(req: any) {
+export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // Public paths that don't require auth
-  const publicPaths = ["/login", "/signup", "/api/auth"];
+  const publicPaths = ["/login", "/signup", "/admin-signup", "/hod-signup", "/warden-signup", "/security-signup", "/api/auth"];
   const isPublicPath = publicPaths.some((p) => path.startsWith(p));
 
   // Check for token

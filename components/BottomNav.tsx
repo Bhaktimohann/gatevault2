@@ -8,7 +8,7 @@ interface BottomNavProps {
   color?: "orange" | "blue";
 }
 
-export function BottomNav({ activeTab = "home", color = "orange" }: BottomNavProps) {
+export function BottomNav({ color = "orange" }: BottomNavProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -27,7 +27,7 @@ export function BottomNav({ activeTab = "home", color = "orange" }: BottomNavPro
   const isActive = (key: "home" | "log" | "settings") => pathname === navItems.find(n => n.key === key)?.href;
 
   return (
-    <div className="bottom-nav-shell absolute bottom-4 left-1/2 w-[min(320px,calc(100%-32px))] -translate-x-1/2 rounded-2xl flex justify-around py-3">
+    <div className="bottom-nav-shell absolute bottom-4 left-1/2 flex w-[min(320px,calc(100%-32px))] -translate-x-1/2 justify-around rounded-2xl py-3 sm:w-[min(420px,calc(100%-64px))]">
       {navItems.map((item) => {
         const active = isActive(item.key);
         return (

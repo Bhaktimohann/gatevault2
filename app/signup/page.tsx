@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function SignupPage() {
@@ -11,6 +11,10 @@ export default function SignupPage() {
     name: "",
     email: "",
     phone: "",
+    universityId: "",
+    semester: "",
+    department: "",
+    branch: "",
     password: "",
     confirmPassword: "",
   });
@@ -18,7 +22,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     if (name === "phone") {
@@ -35,6 +39,10 @@ export default function SignupPage() {
       !form.name ||
       !form.email ||
       !form.phone ||
+      !form.universityId ||
+      !form.semester ||
+      !form.department ||
+      !form.branch ||
       !form.password ||
       !form.confirmPassword
     ) {
@@ -56,6 +64,26 @@ export default function SignupPage() {
     const phoneRegex = /^[6-9]\d{9}$/;
     if (!phoneRegex.test(form.phone)) {
       alert("Enter valid 10-digit Indian phone number");
+      return;
+    }
+
+    if (form.universityId.trim().length > 40) {
+      alert("University ID is too long");
+      return;
+    }
+
+    if (form.semester.trim().length > 20) {
+      alert("Semester is too long");
+      return;
+    }
+
+    if (form.department.trim().length > 80) {
+      alert("Department is too long");
+      return;
+    }
+
+    if (form.branch.trim().length > 80) {
+      alert("Branch is too long");
       return;
     }
 
@@ -81,18 +109,22 @@ export default function SignupPage() {
           name: form.name,
           email: form.email,
           phone: form.phone,
+          universityId: form.universityId,
+          semester: form.semester,
+          department: form.department,
+          branch: form.branch,
           password: form.password,
         }),
       });
 
       if (res.ok) {
-        alert("Account created successfully 🚀");
+        alert("Account created successfully");
         router.push("/login");
       } else {
         const errorData = await res.json();
         alert(errorData.message || "Failed to create account");
       }
-    } catch (error) {
+    } catch {
       alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -100,138 +132,201 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="mobile-shell-outer">
+    <main className="auth-shell-outer">
+      <section className="auth-shell">
+        <div className="auth-bg-wave" />
 
-      {/* MOBILE FRAME */}
-      <div className="mobile-shell">
+        <div className="auth-content">
+          <header className="text-center">
+            <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">GateVault</h1>
+            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+              Secure student gate pass system
+            </p>
+          </header>
 
-        {/* 🔥 ANIMATED BLUE BACKGROUND (FIXED) */}
-        <div className="absolute bottom-[-120px] right-[-80px] w-[520px] h-[380px] bg-gradient-to-br from-blue-400 to-blue-600 rounded-tl-[200px] animate-[floatWave_8s_ease-in-out_infinite] -z-10" />
-
-
-
-        {/* 🔥 HEADER */}
-        <div className="absolute top-[8%] w-full text-center">
-          <h1 className="text-2xl font-bold text-gray-800">GateVault</h1>
-          <p className="text-xs text-gray-500">
-            Secure student gate pass system
-          </p>
-        </div>
-
-        {/* 🔥 TOGGLE */}
-        <div className="absolute top-[16%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-xl bg-gray-200 p-1 flex">
-          <button
-            onClick={() => router.push("/login")}
-            className="w-1/2 py-2 text-sm text-gray-500"
-          >
-            Sign in
-          </button>
-
-          <button className="w-1/2 bg-white py-2 rounded-xl text-sm font-medium shadow">
-            Sign up
-          </button>
-        </div>
-
-        {/* 🔥 CARD */}
-        <div className="glass-card absolute top-[26%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-6 text-gray-800">
-
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
-            Create Account
-          </h2>
-
-          {/* NAME */}
-          <div className="mt-3">
-            <p className="text-xs text-gray-400">FULL NAME</p>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              type="text"
-              placeholder="John Doe"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
-            />
-          </div>
-
-          {/* EMAIL */}
-          <div className="mt-3">
-            <p className="text-xs text-gray-400">EMAIL</p>
-            <input
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              type="email"
-              placeholder="yourname@gmail.com"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
-            />
-          </div>
-
-          {/* PHONE */}
-          <div className="mt-3">
-            <p className="text-xs text-gray-400">PHONE NUMBER</p>
-            <input
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              type="tel"
-              maxLength={10}
-              placeholder="9876543210"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
-            />
-          </div>
-
-          {/* PASSWORD */}
-          <div className="mt-3 relative">
-            <p className="text-xs text-gray-400">PASSWORD</p>
-            <input
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              type={showPassword ? "text" : "password"}
-              placeholder="********"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
-            />
-            <span
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-9 cursor-pointer text-gray-500"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </span>
-          </div>
-
-          {/* CONFIRM PASSWORD */}
-          <div className="mt-3">
-            <p className="text-xs text-gray-400">CONFIRM PASSWORD</p>
-            <input
-              name="confirmPassword"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              type="password"
-              placeholder="********"
-              className="w-full mt-1 p-3 rounded-xl bg-gray-100 outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
-            />
-          </div>
-
-          {/* BUTTON */}
-          <button
-            onClick={handleSignup}
-            className="w-full mt-5 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-3 rounded-xl shadow-md hover:scale-105 active:scale-95 transition"
-          >
-            {loading ? "Creating..." : "SIGN UP "}
-          </button>
-
-          {/* LOGIN LINK */}
-          <p className="text-xs text-gray-500 text-center mt-3">
-            Already have an account?{" "}
-            <span
-              onClick={() => router.push("/login")}
-              className="text-blue-500 font-semibold cursor-pointer hover:underline"
-            >
+          <div className="auth-toggle">
+            <button type="button" onClick={() => router.push("/login")}>
               Sign in
-            </span>
-          </p>
+            </button>
 
+            <button type="button" className="auth-toggle-active">
+              Sign up
+            </button>
+          </div>
+
+          <div className="glass-card auth-card">
+            <h2 className="mb-2 text-lg font-semibold text-gray-800">
+              Create Account
+            </h2>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">FULL NAME</p>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                type="text"
+                placeholder="John Doe"
+                autoComplete="name"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">EMAIL</p>
+              <input
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                type="email"
+                placeholder="yourname@gmail.com"
+                autoComplete="email"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">PHONE NUMBER</p>
+              <input
+                name="phone"
+                value={form.phone}
+                onChange={handleChange}
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="9876543210"
+                autoComplete="tel"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">UNIVERSITY ID</p>
+              <input
+                name="universityId"
+                value={form.universityId}
+                onChange={handleChange}
+                type="text"
+                placeholder="KU123456"
+                autoComplete="off"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="mt-3">
+                <p className="text-xs text-gray-400">SEMESTER</p>
+                <input
+                  name="semester"
+                  value={form.semester}
+                  onChange={handleChange}
+                  type="text"
+                  placeholder="5th"
+                  className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div className="mt-3">
+                <p className="text-xs text-gray-400">DEPARTMENT</p>
+                <input
+                  name="department"
+                  value={form.department}
+                  onChange={handleChange}
+                  type="text"
+                  placeholder="Engineering"
+                  className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">BRANCH</p>
+              <input
+                name="branch"
+                value={form.branch}
+                onChange={handleChange}
+                type="text"
+                placeholder="Computer Science"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <div className="relative mt-3">
+              <p className="text-xs text-gray-400">PASSWORD</p>
+              <input
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                type={showPassword ? "text" : "password"}
+                placeholder="********"
+                autoComplete="new-password"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 pr-11 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-8 rounded-md p-1 text-gray-500"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">CONFIRM PASSWORD</p>
+              <input
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                type="password"
+                placeholder="********"
+                autoComplete="new-password"
+                className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSignup}
+              disabled={loading}
+              className={`mt-5 w-full rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 py-3 font-semibold text-white shadow-md transition ${loading ? "cursor-not-allowed opacity-70" : "hover:scale-[1.02] active:scale-[0.98]"}`}
+            >
+              {loading ? "Creating..." : "SIGN UP"}
+            </button>
+
+            <p className="mt-3 text-center text-xs text-gray-500">
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="font-semibold text-blue-500 hover:underline"
+              >
+                Sign in
+              </button>
+            </p>
+
+            <div className="mt-5 border-t border-gray-200 pt-4">
+              <p className="mb-2 text-center text-xs font-semibold uppercase text-gray-400">
+                Staff signup
+              </p>
+              <div className="auth-role-switcher mt-0">
+                <button type="button" onClick={() => router.push("/admin-signup")}>
+                  Admin
+                </button>
+                <button type="button" onClick={() => router.push("/hod-signup")}>
+                  HOD
+                </button>
+                <button type="button" onClick={() => router.push("/warden-signup")}>
+                  Warden
+                </button>
+                <button type="button" onClick={() => router.push("/security-signup")}>
+                  Security
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

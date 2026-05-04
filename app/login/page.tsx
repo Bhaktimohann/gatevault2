@@ -1,8 +1,14 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
+
+type UserRole = "admin" | "hod" | "warden" | "security" | "student";
+
+type SessionUserWithRole = {
+  role?: UserRole;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,9 +42,12 @@ export default function LoginPage() {
     if (res?.error) {
       alert("Invalid credentials");
       setLoading(false);
-    } else {
-      router.push("/dashboard");
+      return;
     }
+
+    const session = await getSession();
+    const role = (session?.user as SessionUserWithRole | undefined)?.role;
+    router.push(role === "admin" ? "/admin" : role === "hod" ? "/hod" : role === "warden" ? "/warden" : role === "security" ? "/security" : "/dashboard");
   }, [email, password, router]);
 
   const handleGoogleLogin = useCallback(() => {
@@ -50,113 +59,118 @@ export default function LoginPage() {
   }, [router]);
 
   return (
-    <div className="mobile-shell-outer">
+    <main className="auth-shell-outer">
+      <section className="auth-shell">
+        <div className="auth-bg-wave" />
 
-      {/* MOBILE FRAME */}
-      <div className="mobile-shell">
+        <div className="auth-content">
+          <header className="text-center">
+            <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">GateVault</h1>
+            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+              Secure student gate pass system
+            </p>
+          </header>
 
-        {/* 🔥 ANIMATED BLUE BACKGROUND */}
-        <div className="absolute bottom-[-120px] right-[-80px] w-[520px] h-[380px] bg-gradient-to-br from-blue-400 to-blue-600 rounded-tl-[200px] animate-[floatWave_8s_ease-in-out_infinite]" />
+          <div className="auth-toggle">
+            <button type="button" className="auth-toggle-active">
+              Sign in
+            </button>
+            <button type="button" onClick={handleSignupClick}>
+              Sign up
+            </button>
+          </div>
 
-        {/* 🔥 HEADER */}
-        <div className="absolute top-[8%] w-full text-center">
-          <h1 className="text-2xl font-bold text-gray-800">GateVault</h1>
-          <p className="text-xs text-gray-500">
-            Secure student gate pass system
-          </p>
-        </div>
+          <div className="glass-card auth-card">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 px-3 py-3 transition hover:bg-gray-50"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-5 w-5 shrink-0"
+              >
+                <path
+                  fill="#4285F4"
+                  d="M21.6 12.23c0-.72-.06-1.25-.19-1.8H12v3.27h5.52c-.11.81-.71 2.03-2.04 2.85l-.02.11 2.96 2.02.2.02c1.86-1.52 2.98-3.76 2.98-6.47Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 21c2.66 0 4.89-.77 6.52-2.1l-3.1-2.35c-.83.51-1.94.87-3.42.87-2.6 0-4.8-1.52-5.59-3.63l-.12.01-3.08 2.11-.04.1C4.78 18.94 8.12 21 12 21Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M6.41 13.79A5.15 5.15 0 0 1 6.12 12c0-.62.1-1.22.28-1.79l-.01-.12-3.12-2.15-.1.04A8.33 8.33 0 0 0 2.3 12c0 1.45.39 2.81 1.07 4.02l3.04-2.23Z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 6.58c1.85 0 3.1.7 3.81 1.29l2.78-2.4C16.88 4.06 14.66 3 12 3 8.12 3 4.78 5.06 3.17 7.98l3.23 2.23C7.2 8.1 9.4 6.58 12 6.58Z"
+                />
+              </svg>
+              <span className="text-sm font-medium text-gray-800">
+                Sign in with Google
+              </span>
+            </button>
 
-        {/* 🔥 TOGGLE BUTTON */}
-        <div className="absolute top-[16%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-xl bg-gray-200 p-1 flex">
-          <button className="w-1/2 bg-white py-2 rounded-xl text-sm font-medium shadow">
-            Sign in
-          </button>
-          <button
-            onClick={handleSignupClick}
-            className="w-1/2 py-2 text-sm text-gray-500"
-          >
-            Sign up
-          </button>
-        </div>
+            <div className="my-4 flex items-center gap-2">
+              <div className="h-[1px] flex-1 bg-gray-300" />
+              <span className="text-xs text-gray-400">or</span>
+              <div className="h-[1px] flex-1 bg-gray-300" />
+            </div>
 
-        {/* 🔥 LOGIN CARD */}
-        <div className="glass-card absolute top-[26%] left-1/2 w-[min(340px,calc(100%-32px))] -translate-x-1/2 rounded-3xl p-6 text-gray-800">
-
-          {/* 🔥 GOOGLE LOGIN */}
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full border border-gray-300 rounded-full py-3 px-3 flex items-center justify-center gap-2 hover:bg-gray-50 transition"
-          >
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              className="h-5"
+            <input
+              type="email"
+              value={email}
+              onChange={handleEmailChange}
+              placeholder="Email"
+              autoComplete="email"
+              className="mb-3 w-full rounded-xl bg-gray-100 p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
-            <span className="text-sm font-medium text-gray-800">
-              Sign in with Google
-            </span>
-          </button>
 
-          {/* DIVIDER */}
-          <div className="flex items-center gap-2 mb-4 mt-4">
-            <div className="flex-1 h-[1px] bg-gray-300"></div>
-            <span className="text-xs text-gray-400">or</span>
-            <div className="flex-1 h-[1px] bg-gray-300"></div>
+            <input
+              type="password"
+              value={password}
+              onChange={handlePasswordChange}
+              placeholder="Password"
+              autoComplete="current-password"
+              className="mb-3 w-full rounded-xl bg-gray-100 p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" defaultChecked />
+                Remember me
+              </label>
+
+              <button type="button" className="text-gray-500 transition hover:text-blue-600">
+                Forgot password?
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogin}
+              disabled={loading}
+              className={`mb-3 w-full rounded-full bg-blue-500 py-3 text-sm font-medium text-white shadow-md transition ${loading ? "cursor-not-allowed opacity-70" : "hover:bg-blue-600"}`}
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+
+            <p className="mb-4 text-center text-[10px] text-gray-400">
+              By signing in you agree to terms & privacy policy
+            </p>
+
+            <button
+              type="button"
+              onClick={handleSignupClick}
+              className="w-full rounded-full bg-gradient-to-r from-purple-400 to-purple-500 py-3 text-sm font-medium text-white"
+            >
+              Create a new account
+            </button>
           </div>
-
-          {/* EMAIL */}
-          <input
-            type="email"
-            value={email}
-            onChange={handleEmailChange}
-            placeholder="Email"
-            className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-
-          {/* PASSWORD */}
-          <input
-            type="password"
-            value={password}
-            onChange={handlePasswordChange}
-            placeholder="Password"
-            className="w-full p-3 rounded-xl bg-gray-100 mb-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-
-          {/* REMEMBER + FORGOT */}
-          <div className="flex justify-between items-center mb-4 text-xs text-gray-600">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" defaultChecked />
-              Remember me
-            </label>
-
-            <span className="text-gray-500 cursor-pointer">
-              Forgot password?
-            </span>
-          </div>
-
-          {/* 🔥 SIGN IN BUTTON */}
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className={`w-full bg-blue-500 text-white py-3 rounded-full mb-3 text-sm font-medium shadow-md transition ${loading ? "opacity-70 cursor-not-allowed" : "hover:bg-blue-600"}`}
-          >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
-
-          {/* TERMS */}
-          <p className="text-[10px] text-gray-400 text-center mb-4">
-            By signing in you agree to terms & privacy policy
-          </p>
-
-          {/* CREATE ACCOUNT */}
-          <button
-            onClick={handleSignupClick}
-            className="w-full bg-gradient-to-r from-purple-400 to-purple-500 text-white py-3 rounded-full text-sm font-medium"
-          >
-            Create a new account
-          </button>
-
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
