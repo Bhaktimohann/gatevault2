@@ -12,11 +12,19 @@ type GatePass = {
   timeOut: string;
   timeIn: string;
   createdAt: string;
+  leaveStartDate?: string;
+  leaveEndDate?: string;
   passType?: "Short" | "LongLeave";
+  shortPassStatus?: "Active" | "Overdue" | "On Time" | "On Time (Grace)" | "Late" | "Invalid Short Pass";
+  expectedReturnTime?: string;
+  totalDurationMinutes?: number | null;
+  lateDurationMinutes?: number | null;
   approvalStatus?: "Pending" | "Approved" | "Rejected";
   hodApprovalStatus?: "NotRequired" | "Pending" | "Approved" | "Rejected";
   wardenApprovalStatus?: "NotRequired" | "Pending" | "Approved" | "Rejected";
-  status?: "Active" | "Out" | "Returned" | "Expired" | "Pending";
+  status?: "Active" | "Out" | "Returned" | "Expired" | "Pending" | "Cancelled";
+  scannedOutAt?: string;
+  scannedInAt?: string;
 };
 
 function PassLoading() {
@@ -27,6 +35,10 @@ function PassLoading() {
   );
 }
 
+function formatPassDate(value?: string) {
+  return value ? new Date(value).toLocaleDateString() : "";
+}
+
 function PassContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,10 +47,10 @@ function PassContent() {
 
   const [pass, setPass] = useState<GatePass | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(0);
   const [expiredLocal, setExpiredLocal] = useState(false);
   const [qrData, setQrData] = useState("");
   const [qrExpiresAt, setQrExpiresAt] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   const data = {
     date: "Apr 8",
@@ -126,7 +138,43 @@ function PassContent() {
     !!pass &&
     isQrApproved &&
     pass.status !== "Returned" &&
-    pass.status !== "Expired";
+    pass.status !== "Expired" &&
+    pass.status !== "Cancelled";
+
+  const handleCancelPass = useCallback(async () => {
+    if (!passId || !pass || cancelling) {
+      return;
+    }
+
+    if (!window.confirm("Cancel this gate pass?")) {
+      return;
+    }
+
+    setCancelling(true);
+
+    try {
+      const res = await fetch("/api/passes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Failed to cancel pass");
+        return;
+      }
+
+      setPass(data.pass || { ...pass, status: "Cancelled" });
+      setQrData("");
+      setQrExpiresAt("");
+      router.replace("/dashboard");
+    } catch {
+      alert("Something went wrong");
+    } finally {
+      setCancelling(false);
+    }
+  }, [passId, pass, cancelling, router]);
 
   useEffect(() => {
     if (status !== "authenticated" || !passId || (!isWaitingForApproval && !canStillBeScanned)) {
@@ -171,13 +219,11 @@ function PassContent() {
 
   useEffect(() => {
     if (!qrExpiresAt) {
-      setTimeLeft(0);
       return;
     }
 
     const updateTimeLeft = () => {
       const secondsLeft = Math.max(0, Math.ceil((new Date(qrExpiresAt).getTime() - Date.now()) / 1000));
-      setTimeLeft(secondsLeft);
       setExpiredLocal(secondsLeft <= 0);
     };
 
@@ -192,11 +238,16 @@ function PassContent() {
   }
 
   const passData = pass || { place: data.date, timeOut: data.from, timeIn: data.to };
-
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+  const startDate = formatPassDate(pass?.leaveStartDate || pass?.createdAt);
+  const endDate = formatPassDate(pass?.leaveEndDate || pass?.createdAt);
 
   const actualStatus = pass?.status || "Active";
+  const isCancelled = actualStatus === "Cancelled";
+  const displayStatus = isCancelled
+    ? "Cancelled"
+    : pass?.passType === "Short" && pass.shortPassStatus
+      ? pass.shortPassStatus
+      : actualStatus;
   const needsHodApproval = pass?.passType === "LongLeave" && hodApprovalStatus === "Pending";
   const isHodRejected = pass?.passType === "LongLeave" && hodApprovalStatus === "Rejected";
   const needsWardenApproval = pass?.passType === "LongLeave" && hodApprovalStatus === "Approved" && wardenApprovalStatus === "Pending";
@@ -204,7 +255,16 @@ function PassContent() {
   const isAwaitingApproval = approvalStatus === "Pending";
   const isRejected = approvalStatus === "Rejected";
   const pendingApprovalLabel = pass?.passType === "LongLeave" ? "warden" : "admin";
-  const isInvalid = expiredLocal || actualStatus === "Expired" || actualStatus === "Returned";
+  const isInvalid = expiredLocal || actualStatus === "Expired" || actualStatus === "Returned" || isCancelled;
+  const canCancelExpiredPendingPass = actualStatus === "Expired" && isWaitingForApproval;
+  const canCancelPass =
+    !!pass &&
+    !pass.scannedOutAt &&
+    !isRejected &&
+    !isHodRejected &&
+    !isWardenRejected &&
+    !["Out", "Returned", "Cancelled"].includes(actualStatus) &&
+    (actualStatus !== "Expired" || canCancelExpiredPendingPass);
   const canShowQr = !!qrData && !isInvalid && approvalStatus === "Approved" && !needsHodApproval && !isHodRejected && !needsWardenApproval && !isWardenRejected;
 
   return (
@@ -229,10 +289,12 @@ function PassContent() {
           {/* STATUS */}
           <div className="mb-2">
             <span
-              className={`text-[10px] px-3 py-1 rounded-full text-white ${isRejected || isHodRejected || isWardenRejected || isInvalid ? "bg-red-500" : needsHodApproval || needsWardenApproval || isAwaitingApproval || actualStatus === "Pending" ? "bg-orange-500" : actualStatus === "Out" ? "bg-purple-500" : "bg-green-500"
+              className={`text-[10px] px-3 py-1 rounded-full text-white ${isCancelled ? "bg-gray-500" : isRejected || isHodRejected || isWardenRejected || isInvalid || displayStatus === "Late" || displayStatus === "Overdue" || displayStatus === "Invalid Short Pass" ? "bg-red-500" : needsHodApproval || needsWardenApproval || isAwaitingApproval || actualStatus === "Pending" ? "bg-orange-500" : actualStatus === "Out" ? "bg-purple-500" : "bg-green-500"
                 }`}
             >
-              {isHodRejected
+              {isCancelled
+                ? "Cancelled"
+                : isHodRejected
                 ? "HOD Rejected"
                 : isWardenRejected
                   ? "Warden Rejected"
@@ -248,7 +310,7 @@ function PassContent() {
                     : "Admin Approval"
                   : isInvalid
                     ? (actualStatus === "Returned" ? "Returned" : "Expired")
-                    : actualStatus}
+                    : displayStatus}
             </span>
           </div>
 
@@ -267,7 +329,7 @@ function PassContent() {
             </div>
 
             <p className="text-lg font-bold text-gray-700">
-              {pass ? new Date(pass.createdAt).toLocaleDateString() : data.date}
+              {startDate || data.date}
             </p>
           </div>
 
@@ -277,6 +339,7 @@ function PassContent() {
             <div className="min-w-0">
               <p className="text-xs text-gray-400">Valid from</p>
               <p className="break-words text-lg font-bold">{passData.timeOut}</p>
+              {startDate && <p className="mt-1 text-xs text-gray-400">{startDate}</p>}
             </div>
 
             {/* Emoji is kept here but movement and extra classes are removed */}
@@ -287,6 +350,7 @@ function PassContent() {
             <div className="min-w-0 text-right">
               <p className="text-xs text-gray-400">Valid to</p>
               <p className="break-words text-lg font-bold">{passData.timeIn}</p>
+              {endDate && <p className="mt-1 text-xs text-gray-400">{endDate}</p>}
             </div>
 
           </div>
@@ -319,7 +383,7 @@ function PassContent() {
           {/* ⏳ COUNTDOWN */}
           <p className="text-sm text-center font-semibold mb-3">
             {isInvalid
-              ? (actualStatus === "Returned" ? "Pass Completed" : "Pass Expired")
+              ? (actualStatus === "Returned" ? (pass?.shortPassStatus || "Pass Completed") : isCancelled ? "Pass Cancelled" : "Pass Expired")
               : isHodRejected
                 ? "Long Leave Rejected"
                 : isWardenRejected
@@ -332,9 +396,7 @@ function PassContent() {
                 ? "Pass Rejected"
                 : isAwaitingApproval
                   ? `Waiting for ${pendingApprovalLabel} approval`
-              : `Expires in ${minutes}:${seconds
-                .toString()
-                .padStart(2, "0")}`}
+              : "Pass Active"}
           </p>
 
           <p className="text-[10px] text-gray-400 text-center mb-4">
@@ -342,12 +404,24 @@ function PassContent() {
           </p>
 
           {/* 🔥 CANCEL BUTTON */}
-          <button
-            onClick={() => router.replace("/dashboard")}
-            className="w-full bg-gradient-to-r from-orange-400 to-orange-600 text-white py-3 rounded-xl font-medium shadow-md hover:scale-105 active:scale-95 transition"
-          >
-            Cancel
-          </button>
+          {canCancelPass ? (
+            <button
+              type="button"
+              onClick={handleCancelPass}
+              disabled={cancelling}
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-xl font-medium shadow-md hover:scale-105 active:scale-95 transition disabled:opacity-70"
+            >
+              {cancelling ? "Cancelling..." : "Cancel Pass"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => router.replace("/dashboard")}
+              className="w-full bg-gradient-to-r from-orange-400 to-orange-600 text-white py-3 rounded-xl font-medium shadow-md hover:scale-105 active:scale-95 transition"
+            >
+              Back to Dashboard
+            </button>
+          )}
         </div>
 
       </div>

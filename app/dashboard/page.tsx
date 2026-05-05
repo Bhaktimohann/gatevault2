@@ -21,6 +21,10 @@ function isCampusOut(pass: Pass) {
   return pass.status === "Out" || Boolean(pass.scannedOutAt && !pass.scannedInAt);
 }
 
+function formatPassDate(value?: string) {
+  return value ? new Date(value).toLocaleDateString() : "";
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -54,6 +58,11 @@ export default function Dashboard() {
     latestPass?.passType === "LongLeave" &&
     latestPass.hodApprovalStatus === "Approved" &&
     latestPass.approvalStatus === "Pending";
+  const latestStartDate = formatPassDate(latestPass?.leaveStartDate || latestPass?.createdAt);
+  const latestEndDate = formatPassDate(latestPass?.leaveEndDate || latestPass?.createdAt);
+  const latestDisplayStatus = latestPass?.passType === "Short" && latestPass.shortPassStatus
+    ? latestPass.status === "Cancelled" ? "Cancelled" : latestPass.shortPassStatus
+    : latestPass?.status;
 
   const handleLogout = () => signOut({ callbackUrl: "/login" });
 
@@ -102,8 +111,10 @@ export default function Dashboard() {
                   {latestPass.place}
                 </h2>
 
-                <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs text-white ${latestPass.hodApprovalStatus === "Rejected" || latestPass.approvalStatus === "Rejected" ? "bg-red-500" : latestPass.hodApprovalStatus === "Pending" || latestPass.approvalStatus === "Pending" || latestPass.status === "Pending" ? "bg-orange-500" : latestPass.status === "Active" ? "bg-green-500" : latestPass.status === "Out" ? "bg-purple-500" : latestPass.status === "Returned" ? "bg-teal-500" : "bg-red-500"}`}>
-                  {latestPass.hodApprovalStatus === "Pending"
+                <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs text-white ${latestPass.status === "Cancelled" ? "bg-gray-500" : latestPass.hodApprovalStatus === "Rejected" || latestPass.approvalStatus === "Rejected" || latestDisplayStatus === "Overdue" || latestDisplayStatus === "Late" || latestDisplayStatus === "Invalid Short Pass" ? "bg-red-500" : latestPass.hodApprovalStatus === "Pending" || latestPass.approvalStatus === "Pending" || latestPass.status === "Pending" ? "bg-orange-500" : latestPass.status === "Active" || latestDisplayStatus === "On Time" || latestDisplayStatus === "On Time (Grace)" ? "bg-green-500" : latestPass.status === "Out" ? "bg-purple-500" : latestPass.status === "Returned" ? "bg-teal-500" : "bg-red-500"}`}>
+                  {latestPass.status === "Cancelled"
+                    ? "Cancelled"
+                    : latestPass.hodApprovalStatus === "Pending"
                     ? "HOD Approval"
                     : latestPass.hodApprovalStatus === "Rejected"
                       ? "HOD Rejected"
@@ -113,7 +124,7 @@ export default function Dashboard() {
                         ? "Admin Approval"
                         : latestPass.approvalStatus === "Rejected"
                           ? "Rejected"
-                          : latestPass.status}
+                          : latestDisplayStatus}
                 </span>
 
                 <div className="mt-4 rounded-2xl bg-gray-100 p-4">
@@ -123,7 +134,7 @@ export default function Dashboard() {
                       <p className="break-words text-sm font-semibold">{latestPass.timeOut}</p>
                     </div>
                     <p className="mt-4 text-xs text-gray-500">
-                      {new Date(latestPass.createdAt).toLocaleDateString()}
+                      {latestStartDate}
                     </p>
                   </div>
 
@@ -133,7 +144,7 @@ export default function Dashboard() {
                       <p className="break-words text-sm font-semibold">{latestPass.timeIn}</p>
                     </div>
                     <p className="mt-4 text-xs text-gray-500">
-                      {new Date(latestPass.createdAt).toLocaleDateString()}
+                      {latestEndDate}
                     </p>
                   </div>
                 </div>
@@ -143,7 +154,7 @@ export default function Dashboard() {
                   onClick={() => router.push(`/pass?id=${latestPass._id}`)}
                   className="mt-4 w-full rounded-xl bg-gradient-to-r from-orange-400 to-orange-600 py-3 text-sm font-medium text-white shadow-md transition hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  {latestPass.approvalStatus === "Approved" ? "View QR" : "View Pass Status"}
+                  {latestPass.approvalStatus === "Approved" && latestPass.status !== "Cancelled" ? "View QR" : "View Pass Status"}
                 </button>
               </>
             ) : (

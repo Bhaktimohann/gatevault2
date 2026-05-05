@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
-import { authOptions } from "../[...nextauth]/route";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
-import { isValidEmail, isValidPhone, readJson, validatePassword } from "@/lib/security";
+import { isValidEmail, isValidPhone, readJson, validatePassword, validateStaffSignupCode } from "@/lib/security";
 
 function validateInput(name: string, email: string, phone: string, password: unknown) {
   if (!name || !email || !phone || !password) {
@@ -44,7 +42,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
     }
 
-    const { name, email, phone, password } = body as Record<string, string>;
+    const { name, email, phone, password, verificationCode } = body as Record<string, string>;
     const normalizedName = name?.trim();
     const normalizedEmail = email?.trim().toLowerCase();
     const normalizedPhone = phone?.replace(/\D/g, "");
@@ -54,22 +52,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: validationError }, { status: 400 });
     }
 
-    await dbConnect();
-
-    const existingAdmin = await User.exists({ role: "admin" });
-
-    if (existingAdmin) {
-      const session = await getServerSession(authOptions);
-      const currentUserId = (session?.user as { id?: string } | undefined)?.id;
-      const currentUser = currentUserId ? await User.findById(currentUserId) : null;
-
-      if (!currentUser || currentUser.role !== "admin") {
-        return NextResponse.json(
-          { message: "Only an existing admin can create another admin account" },
-          { status: 403 }
-        );
-      }
+    const codeError = validateStaffSignupCode(verificationCode, "admin");
+    if (codeError) {
+      return NextResponse.json({ message: codeError }, { status: 403 });
     }
+
+    await dbConnect();
 
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser?.password) {

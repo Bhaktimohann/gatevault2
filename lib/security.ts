@@ -88,6 +88,23 @@ export function validatePassword(value: unknown) {
   return null;
 }
 
+export function validateStaffSignupCode(value: unknown, role: Role) {
+  const providedCode = typeof value === "string" ? value.trim() : "";
+  const roleCode = process.env[`${role.toUpperCase()}_SIGNUP_CODE`]?.trim();
+  const sharedCode = process.env.STAFF_SIGNUP_CODE?.trim();
+  const expectedCode = roleCode || sharedCode;
+
+  if (!expectedCode) {
+    return "Staff signup is not configured";
+  }
+
+  if (!providedCode || providedCode !== expectedCode) {
+    return "Invalid staff verification code";
+  }
+
+  return null;
+}
+
 export function jsonError(message: string, status = 400) {
   return NextResponse.json({ message }, { status });
 }

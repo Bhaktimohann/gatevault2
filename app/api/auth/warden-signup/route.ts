@@ -14,6 +14,7 @@ import {
   normalizeText,
   readJson,
   validatePassword,
+  validateStaffSignupCode,
 } from "@/lib/security";
 
 function validateInput(name: string, email: string, phone: string, hostel: string, password: unknown) {
@@ -46,10 +47,16 @@ export async function POST(req: Request) {
     const normalizedEmail = normalizeEmail((body as { email?: unknown }).email);
     const normalizedPhone = normalizePhone((body as { phone?: unknown }).phone);
     const normalizedHostel = normalizeText((body as { hostel?: unknown }).hostel, 50);
+    const verificationCode = (body as { verificationCode?: unknown }).verificationCode;
 
     const validationError = validateInput(normalizedName, normalizedEmail, normalizedPhone, normalizedHostel, password);
     if (validationError) {
       return NextResponse.json({ message: validationError }, { status: 400 });
+    }
+
+    const codeError = validateStaffSignupCode(verificationCode, "warden");
+    if (codeError) {
+      return NextResponse.json({ message: codeError }, { status: 403 });
     }
 
     await dbConnect();

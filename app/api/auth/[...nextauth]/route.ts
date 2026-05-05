@@ -4,7 +4,6 @@ import GoogleProvider from "next-auth/providers/google";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
-import { isEmailAllowedForSignup, isPrivilegedRole } from "@/lib/security";
 
 type DbUser = {
   _id: { toString(): string };
@@ -94,10 +93,6 @@ authProviders.push(
         throw new Error("Invalid credentials");
       }
 
-      if (!isPrivilegedRole(user.role) && !isEmailAllowedForSignup(email)) {
-        throw new Error("Invalid credentials");
-      }
-
       const isCorrectPassword = await bcrypt.compare(password, user.password);
 
       if (!isCorrectPassword) {
@@ -153,10 +148,6 @@ export const authOptions: AuthOptions = {
           }
 
           const existingUser = await User.findOne({ email });
-          if (!isEmailAllowedForSignup(email) && !isPrivilegedRole(existingUser?.role)) {
-            console.warn("Rejected Google sign-in for non-allowed email domain");
-            return false;
-          }
 
           if (!existingUser) {
             await User.create({

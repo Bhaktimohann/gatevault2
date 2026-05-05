@@ -3,16 +3,30 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
 export default function CreatePage() {
   const router = useRouter();
+  const today = formatDateInput(new Date());
 
   const [form, setForm] = useState({
     passType: "Short",
     phone: "",
     place: "",
     purpose: "",
-    leaveStartDate: "",
-    leaveEndDate: "",
+    leaveStartDate: today,
+    leaveEndDate: today,
     timeOut: "",
     timeIn: "",
     person: "",
@@ -20,25 +34,6 @@ export default function CreatePage() {
   });
 
   const [loading, setLoading] = useState(false);
-
-  const parseTodayTime = (value: string) => {
-    const [hours, minutes] = value.split(":").map(Number);
-
-    if (
-      Number.isNaN(hours) ||
-      Number.isNaN(minutes) ||
-      hours < 0 ||
-      hours > 23 ||
-      minutes < 0 ||
-      minutes > 59
-    ) {
-      return null;
-    }
-
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -67,45 +62,57 @@ export default function CreatePage() {
       return;
     }
 
-    const shortTimeOut = form.passType === "Short" ? parseTodayTime(form.timeOut) : null;
-    const shortTimeIn = form.passType === "Short" ? parseTodayTime(form.timeIn) : null;
+    if (form.passType === "LongLeave" && (!form.leaveStartDate || !form.leaveEndDate)) {
+      alert("Select leave start and end dates");
+      return;
+    }
+
+    const leaveStartDate = form.passType === "Short" ? today : form.leaveStartDate;
+    const initialLeaveEndDate = form.passType === "Short" ? today : form.leaveEndDate;
+    const start = new Date(`${leaveStartDate}T00:00:00`);
+    const end = new Date(`${initialLeaveEndDate}T00:00:00`);
+    const todayStart = new Date(`${today}T00:00:00`);
+    const days = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 
     if (form.passType === "LongLeave") {
-      if (!form.leaveStartDate || !form.leaveEndDate) {
-        alert("Select leave start and end dates");
+      if (start < todayStart) {
+        alert("Leave start date cannot be in the past");
         return;
       }
-
-      const start = new Date(`${form.leaveStartDate}T00:00:00`);
-      const end = new Date(`${form.leaveEndDate}T00:00:00`);
-      const days = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 
       if (days < 2 || days > 15) {
         alert("Long leave must be between 2 and 15 days");
         return;
       }
-    } else if (!shortTimeOut || !shortTimeIn) {
-      alert("Select valid time");
+    }
+
+    const leaveDateTime = new Date(`${leaveStartDate}T${form.timeOut}:00`);
+    let returnDateTime = new Date(`${initialLeaveEndDate}T${form.timeIn}:00`);
+
+    if (form.passType === "Short" && returnDateTime <= leaveDateTime) {
+      returnDateTime = addDays(returnDateTime, 1);
+    }
+
+    if (Number.isNaN(leaveDateTime.getTime()) || Number.isNaN(returnDateTime.getTime())) {
+      alert("Select valid date and time");
       return;
-    } else if (shortTimeIn <= shortTimeOut) {
+    }
+
+    if (form.passType === "LongLeave" && returnDateTime <= leaveDateTime) {
       alert("Time In must be after Time Out");
       return;
     }
 
-    const returnDateTime =
-      form.passType === "LongLeave"
-        ? new Date(`${form.leaveEndDate}T${form.timeIn}:00`)
-        : shortTimeIn;
-
-    if (!returnDateTime) {
-      alert("Select valid time");
-      return;
-    }
-
-    if (returnDateTime <= new Date()) {
+    if (form.passType === "LongLeave" && returnDateTime <= new Date()) {
       alert("Return time must be in the future");
       return;
     }
+
+    const requestForm = {
+      ...form,
+      leaveStartDate,
+      leaveEndDate: formatDateInput(returnDateTime),
+    };
 
     setLoading(true);
 
@@ -115,7 +122,7 @@ export default function CreatePage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(requestForm),
       });
 
       const data = await res.json();
@@ -170,7 +177,7 @@ export default function CreatePage() {
           <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1 sm:max-w-sm">
             <button
               type="button"
-              onClick={() => setForm({ ...form, passType: "Short", leaveStartDate: "", leaveEndDate: "" })}
+              onClick={() => setForm({ ...form, passType: "Short" })}
               className={`rounded-lg py-2 text-xs font-medium transition ${form.passType === "Short" ? "bg-white text-orange-600 shadow-sm" : "text-gray-500"}`}
             >
               Short Pass
@@ -232,7 +239,6 @@ export default function CreatePage() {
             />
           </div>
 
-          {/* TIME PICKER */}
           {form.passType === "LongLeave" && (
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div className="min-w-0">
@@ -242,6 +248,7 @@ export default function CreatePage() {
                   name="leaveStartDate"
                   value={form.leaveStartDate}
                   onChange={handleChange}
+                  min={today}
                   className="w-full mt-1 p-3 rounded-xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
@@ -253,6 +260,7 @@ export default function CreatePage() {
                   name="leaveEndDate"
                   value={form.leaveEndDate}
                   onChange={handleChange}
+                  min={form.leaveStartDate || today}
                   className="w-full mt-1 p-3 rounded-xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>

@@ -28,7 +28,13 @@ export interface Pass {
   timeIn: string;
   person?: string;
   personPhone?: string;
-  status: "Active" | "Out" | "Returned" | "Expired" | "Pending";
+  status: "Active" | "Out" | "Returned" | "Expired" | "Pending" | "Cancelled";
+  shortPassStatus?: "Active" | "Overdue" | "On Time" | "On Time (Grace)" | "Late" | "Invalid Short Pass";
+  allowedDurationHours?: number;
+  graceMinutes?: number;
+  expectedReturnTime?: string;
+  totalDurationMinutes?: number | null;
+  lateDurationMinutes?: number | null;
   approvalStatus?: "Pending" | "Approved" | "Rejected";
   hodApprovalStatus?: "NotRequired" | "Pending" | "Approved" | "Rejected";
   wardenApprovalStatus?: "NotRequired" | "Pending" | "Approved" | "Rejected";

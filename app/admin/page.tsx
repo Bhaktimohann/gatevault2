@@ -51,7 +51,7 @@ type AdminPass = {
   personPhone?: string;
   createdAt: string;
   updatedAt?: string;
-  status?: "Active" | "Out" | "Returned" | "Expired" | "Pending";
+  status?: "Active" | "Out" | "Returned" | "Expired" | "Pending" | "Cancelled";
   approvalStatus?: "Pending" | "Approved" | "Rejected";
   approvedAt?: string;
   rejectedAt?: string;
@@ -92,6 +92,11 @@ function getApprovalStatus(pass: AdminPass): "Pending" | "Approved" | "Rejected"
 
 function csvEscape(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function formatChartLabel(value: unknown) {
+  const label = String(value ?? "");
+  return label.length > 18 ? `${label.slice(0, 18)}...` : label;
 }
 
 function downloadBlob(filename: string, content: string, type: string) {
@@ -510,18 +515,18 @@ export default function AdminDashboard() {
           )}
 
           {(activeView === "dashboard" || activeView === "requests") && (
-            <section className={`grid gap-4 ${activeView === "dashboard" ? "xl:grid-cols-[0.84fr_1fr]" : "xl:grid-cols-1"}`}>
+            <section className="grid gap-4 xl:grid-cols-1">
               {activeView === "dashboard" && (
                 <article className={`rounded-[28px] border p-5 shadow-xl backdrop-blur-2xl ${panelClass}`}>
                   <h2 className="text-lg font-semibold">Top Destinations</h2>
-                  <div className="mt-4 h-64">
+                  <div className="mt-4 h-72 min-w-0">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={destinationChart} layout="vertical" margin={{ left: 8, right: 20 }}>
+                      <BarChart data={destinationChart} layout="vertical" margin={{ top: 8, right: 32, bottom: 8, left: 12 }}>
                         <CartesianGrid stroke={darkMode ? "rgba(255,255,255,0.08)" : "rgba(15,23,42,0.08)"} horizontal={false} />
                         <XAxis type="number" hide allowDecimals={false} />
-                        <YAxis type="category" dataKey="place" tick={{ fill: darkMode ? "#d1d5db" : "#475569", fontSize: 12 }} width={92} axisLine={false} tickLine={false} />
+                        <YAxis type="category" dataKey="place" tick={{ fill: darkMode ? "#d1d5db" : "#475569", fontSize: 12 }} tickFormatter={formatChartLabel} width={148} axisLine={false} tickLine={false} />
                         <Tooltip />
-                        <Bar dataKey="count" fill="#111827" radius={[0, 10, 10, 0]} />
+                        <Bar dataKey="count" fill={darkMode ? "#f9a8d4" : "#111827"} radius={[0, 10, 10, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -552,7 +557,7 @@ export default function AdminDashboard() {
                     <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student, place, purpose" className="h-11 w-full rounded-2xl border border-slate-200 bg-white/82 pl-9 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-pink-200" />
                   </div>
                   <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="h-11 rounded-2xl border border-slate-200 bg-white/82 px-3 text-sm text-slate-900 outline-none">
-                    {["All", "Pending", "Approved", "Rejected", "Active", "Out", "Returned", "Expired"].map((filterItem) => (
+                    {["All", "Pending", "Approved", "Rejected", "Active", "Out", "Returned", "Expired", "Cancelled"].map((filterItem) => (
                       <option key={filterItem}>{filterItem}</option>
                     ))}
                   </select>

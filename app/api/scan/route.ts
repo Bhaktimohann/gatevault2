@@ -6,6 +6,12 @@ import dbConnect from "@/lib/mongodb";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { verifyQrToken } from "@/lib/qrToken";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
+import {
+  DEFAULT_SHORT_PASS_DURATION_HOURS,
+  DEFAULT_SHORT_PASS_GRACE_MINUTES,
+  addHours,
+  evaluateShortPass,
+} from "@/lib/shortPassLogic";
 import Pass from "@/models/Pass";
 
 type SessionUser = {
@@ -194,7 +200,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "This pass is not valid for scanning yet" }, { status: 400 });
     }
 
-    if (pass.timeIn <= now && pass.status !== "Returned") {
+    if (pass.passType !== "LongLeave" && !pass.scannedOutAt && now > addHours(pass.timeOut, pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS)) {
+      const overdueShortPass = evaluateShortPass({
+        outTime: pass.timeOut,
+        allowedDurationHours: pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS,
+        graceMinutes: pass.graceMinutes || DEFAULT_SHORT_PASS_GRACE_MINUTES,
+        currentTime: now,
+      });
+
+      pass.shortPassStatus = overdueShortPass.status;
+      pass.expectedReturnTime = overdueShortPass.expectedReturnTime;
+      pass.lateDurationMinutes = overdueShortPass.lateDurationMinutes;
+      await pass.save();
+
+      return NextResponse.json({ message: "This short pass is overdue" }, { status: 400 });
+    }
+
+    if (pass.passType === "LongLeave" && pass.timeIn <= now && pass.status !== "Returned") {
       pass.status = "Expired";
       pass.qrTokenHash = undefined;
       pass.qrTokenExpiresAt = undefined;
@@ -227,6 +249,16 @@ export async function POST(req: Request) {
       };
       message = "Student Scanned OUT";
     } else if (!pass.scannedInAt && (pass.status === "Out" || pass.scannedOutAt)) {
+      const shortPassReturn =
+        pass.passType !== "LongLeave"
+          ? evaluateShortPass({
+              outTime: pass.timeOut,
+              inTime: now,
+              allowedDurationHours: pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS,
+              graceMinutes: pass.graceMinutes || DEFAULT_SHORT_PASS_GRACE_MINUTES,
+            })
+          : null;
+
       query = {
         _id: pass._id,
         qrTokenHash: token.jtiHash,
@@ -241,6 +273,10 @@ export async function POST(req: Request) {
           status: "Returned",
           scannedInAt: now,
           scannedInBy: sessionUser.id,
+          shortPassStatus: shortPassReturn?.status,
+          expectedReturnTime: shortPassReturn?.expectedReturnTime,
+          totalDurationMinutes: shortPassReturn?.totalDurationMinutes,
+          lateDurationMinutes: shortPassReturn?.lateDurationMinutes,
         },
         $unset: {
           qrTokenHash: "",

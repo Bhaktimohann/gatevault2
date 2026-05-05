@@ -6,7 +6,7 @@ import User from "@/models/User";
 import { authOptions } from "../[...nextauth]/route";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
-import { isValidEmail, isValidPhone, readJson, validatePassword } from "@/lib/security";
+import { isValidEmail, isValidPhone, readJson, validatePassword, validateStaffSignupCode } from "@/lib/security";
 
 function validateInput(name: string, email: string, phone: string, password: unknown) {
   if (!name || !email || !phone || !password) {
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
     }
 
-    const { name, email, phone, password } = body as Record<string, string>;
+    const { name, email, phone, password, verificationCode } = body as Record<string, string>;
     const normalizedName = name?.trim();
     const normalizedEmail = email?.trim().toLowerCase();
     const normalizedPhone = phone?.replace(/\D/g, "");
@@ -52,6 +52,11 @@ export async function POST(req: Request) {
     const validationError = validateInput(normalizedName, normalizedEmail, normalizedPhone, password);
     if (validationError) {
       return NextResponse.json({ message: validationError }, { status: 400 });
+    }
+
+    const codeError = validateStaffSignupCode(verificationCode, "hod");
+    if (codeError) {
+      return NextResponse.json({ message: codeError }, { status: 403 });
     }
 
     await dbConnect();

@@ -13,6 +13,7 @@ export default function AdminSignupPage() {
     phone: "",
     password: "",
     confirmPassword: "",
+    verificationCode: "",
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +24,7 @@ export default function AdminSignupPage() {
   };
 
   const handleSignup = async () => {
-    if (!form.name || !form.email || !form.phone || !form.password || !form.confirmPassword) {
+    if (!form.name || !form.email || !form.phone || !form.password || !form.confirmPassword || !form.verificationCode) {
       alert("Please fill all fields");
       return;
     }
@@ -44,6 +45,7 @@ export default function AdminSignupPage() {
           email: form.email,
           phone: form.phone,
           password: form.password,
+          verificationCode: form.verificationCode,
         }),
       });
       const data = await res.json();
@@ -136,6 +138,11 @@ export default function AdminSignupPage() {
             <div className="mt-3">
               <p className="text-xs text-gray-400">CONFIRM PASSWORD</p>
               <input name="confirmPassword" value={form.confirmPassword} onChange={handleChange} type="password" placeholder="********" autoComplete="new-password" className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+
+            <div className="mt-3">
+              <p className="text-xs text-gray-400">VERIFICATION CODE</p>
+              <input name="verificationCode" value={form.verificationCode} onChange={handleChange} type="password" placeholder="Staff code" autoComplete="off" className="mt-1 w-full rounded-xl bg-gray-100 p-3 text-gray-800 outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
 
             <button type="button" onClick={handleSignup} disabled={loading} className={`mt-5 w-full rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 py-3 font-semibold text-white shadow-md transition ${loading ? "cursor-not-allowed opacity-70" : "hover:scale-[1.02] active:scale-[0.98]"}`}>

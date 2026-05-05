@@ -8,6 +8,8 @@ import { usePasses } from "@/hooks/usePasses";
 import { Pass } from "@/types";
 
 function getLogLabel(log: Pass) {
+  if (log.status === "Cancelled") return "Cancelled";
+  if (log.passType === "Short" && log.shortPassStatus) return log.shortPassStatus;
   if (log.hodApprovalStatus === "Pending") return "HOD Approval";
   if (log.hodApprovalStatus === "Rejected") return "HOD Rejected";
   if (log.passType === "LongLeave" && log.wardenApprovalStatus === "Pending") return "Warden Approval";
@@ -23,16 +25,22 @@ function getLogLabel(log: Pass) {
 
 function getLogColor(label: string) {
   if (label === "Approved") return "bg-green-500";
+  if (label === "On Time" || label === "On Time (Grace)") return "bg-green-500";
   if (label === "Out") return "bg-purple-500";
   if (label === "Returned") return "bg-teal-500";
+  if (label === "Cancelled") return "bg-gray-500";
   if (label === "Awaiting Approval" || label === "HOD Approval" || label === "Warden Approval") return "bg-yellow-500";
-  if (label === "Rejected" || label === "HOD Rejected" || label === "Warden Rejected" || label === "Expired") return "bg-red-500";
+  if (label === "Rejected" || label === "HOD Rejected" || label === "Warden Rejected" || label === "Expired" || label === "Overdue" || label === "Late" || label === "Invalid Short Pass") return "bg-red-500";
   return "bg-gray-500";
 }
 
 function getLogMeta(log: Pass) {
   if (log.scannedInAt) {
     return `Returned: ${new Date(log.scannedInAt).toLocaleString()}`;
+  }
+
+  if (log.status === "Cancelled") {
+    return "Pass cancelled by student";
   }
 
   if (log.scannedOutAt) {

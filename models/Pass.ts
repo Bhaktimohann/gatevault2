@@ -46,8 +46,27 @@ const PassSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["Active", "Out", "Returned", "Expired", "Pending"],
+      enum: ["Active", "Out", "Returned", "Expired", "Pending", "Cancelled"],
       default: "Active",
+    },
+    shortPassStatus: {
+      type: String,
+      enum: ["Active", "Overdue", "On Time", "On Time (Grace)", "Late", "Invalid Short Pass"],
+    },
+    allowedDurationHours: {
+      type: Number,
+    },
+    graceMinutes: {
+      type: Number,
+    },
+    expectedReturnTime: {
+      type: Date,
+    },
+    totalDurationMinutes: {
+      type: Number,
+    },
+    lateDurationMinutes: {
+      type: Number,
     },
     approvalStatus: {
       type: String,
