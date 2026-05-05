@@ -25,6 +25,8 @@ type GatePass = {
   status?: "Active" | "Out" | "Returned" | "Expired" | "Pending" | "Cancelled";
   scannedOutAt?: string;
   scannedInAt?: string;
+  qrData?: string;
+  qrExpiresAt?: string;
 };
 
 function PassLoading() {
@@ -75,6 +77,12 @@ function PassContent() {
         const foundPass = (data.passes as GatePass[] | undefined)?.find((p) => p._id === passId);
         if (foundPass) {
           setPass(foundPass);
+          if (foundPass.qrData) {
+            setQrData(foundPass.qrData);
+            setQrExpiresAt(foundPass.qrExpiresAt || "");
+            setQrError("");
+            setExpiredLocal(false);
+          }
         }
       }
     } catch (error) {

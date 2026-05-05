@@ -7,9 +7,11 @@ import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { isObjectId, readJson } from "@/lib/security";
 import { formatPassDateInput, formatPassTime, parseDateOnly, parsePassDateTime } from "@/lib/passDateTime";
+import { createQrToken } from "@/lib/qrToken";
 import {
   DEFAULT_SHORT_PASS_DURATION_HOURS,
   DEFAULT_SHORT_PASS_GRACE_MINUTES,
+  addHours,
   evaluateShortPass,
   isInvalidRequestedShortPass,
   minutesBetween,
@@ -33,6 +35,8 @@ type PassBody = {
 };
 
 type LeanPass = {
+  _id?: unknown;
+  user?: unknown;
   timeOut?: Date | string;
   timeIn?: Date | string;
   status?: string;
@@ -149,6 +153,44 @@ function hasPendingApproval(pass: {
   );
 }
 
+function isApprovedForQr(pass: {
+  approvalStatus?: string;
+  passType?: string;
+  hodApprovalStatus?: string;
+  wardenApprovalStatus?: string;
+}) {
+  return (
+    pass.approvalStatus === "Approved" &&
+    (pass.passType !== "LongLeave" ||
+      (pass.hodApprovalStatus === "Approved" && pass.wardenApprovalStatus === "Approved"))
+  );
+}
+
+function canIssueQr(pass: LeanPass, now = new Date()) {
+  if (
+    !pass._id ||
+    !pass.user ||
+    !isApprovedForQr(pass) ||
+    pass.status === "Returned" ||
+    pass.status === "Expired" ||
+    pass.status === "Cancelled" ||
+    pass.scannedInAt
+  ) {
+    return false;
+  }
+
+  if (
+    pass.passType !== "LongLeave" &&
+    !pass.scannedOutAt &&
+    pass.timeOut instanceof Date &&
+    now > addHours(pass.timeOut, pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS)
+  ) {
+    return false;
+  }
+
+  return !(pass.passType === "LongLeave" && pass.timeIn instanceof Date && pass.timeIn <= now);
+}
+
 export async function POST(req: Request) {
   try {
     if (!isSameOriginRequest(req)) {
@@ -222,7 +264,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const timeOutDate = parsePassDateTime(leaveStartDate, timeOut);
+    let timeOutDate = parsePassDateTime(leaveStartDate, timeOut);
     let timeInDate = parsePassDateTime(leaveEndDate, timeIn);
     const leaveStartDateValue = parsePassDateTime(leaveStartDate, "00:00");
 
@@ -376,10 +418,33 @@ export async function GET() {
 
     const passes = await Pass.find({ user: sessionUser.id })
       .sort({ createdAt: -1 })
-      .lean();
+      .exec();
 
-    const formattedPasses = (passes as LeanPass[]).map((pass) => ({
+    const qrByPassId = new Map<string, { qrData: string; qrExpiresAt: string }>();
+
+    await Promise.all(
+      passes.map(async (pass) => {
+        if (!canIssueQr(pass, now)) {
+          return;
+        }
+
+        const token = createQrToken(String(pass._id), String(pass.user), 5 * 60);
+        pass.qrTokenHash = token.jtiHash;
+        pass.qrTokenExpiresAt = token.expiresAt;
+        await pass.save();
+        qrByPassId.set(String(pass._id), {
+          qrData: token.qrData,
+          qrExpiresAt: token.expiresAt.toISOString(),
+        });
+      })
+    );
+
+    const formattedPasses = passes.map((passDocument) => {
+      const pass = passDocument.toObject() as LeanPass;
+
+      return {
         ...pass,
+        ...qrByPassId.get(String(pass._id)),
         timeOut: pass.timeOut instanceof Date
           ? formatPassTime(pass.timeOut)
           : pass.timeOut,
@@ -420,7 +485,8 @@ export async function GET() {
         leaveEndDate: pass.leaveEndDate instanceof Date
           ? pass.leaveEndDate.toISOString()
           : pass.leaveEndDate,
-      }));
+      };
+    });
 
     return NextResponse.json(
       { passes: formattedPasses },
