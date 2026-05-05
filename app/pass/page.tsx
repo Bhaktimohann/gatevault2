@@ -50,6 +50,7 @@ function PassContent() {
   const [expiredLocal, setExpiredLocal] = useState(false);
   const [qrData, setQrData] = useState("");
   const [qrExpiresAt, setQrExpiresAt] = useState("");
+  const [qrError, setQrError] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
   const data = {
@@ -100,15 +101,18 @@ function PassContent() {
       if (res.ok) {
         setQrData(data.qrData || "");
         setQrExpiresAt(data.expiresAt || "");
+        setQrError("");
         setExpiredLocal(false);
       } else {
         setQrData("");
         setQrExpiresAt("");
+        setQrError(data.message || "QR is not available yet");
       }
     } catch (error) {
       console.error("Failed to fetch QR token:", error);
       setQrData("");
       setQrExpiresAt("");
+      setQrError("Could not load QR. Check your connection.");
     }
   }, [passId]);
 
@@ -168,6 +172,7 @@ function PassContent() {
       setPass(data.pass || { ...pass, status: "Cancelled" });
       setQrData("");
       setQrExpiresAt("");
+      setQrError("");
       router.replace("/dashboard");
     } catch {
       alert("Something went wrong");
@@ -204,18 +209,27 @@ function PassContent() {
   }, [status, passId, isWaitingForApproval, canStillBeScanned, fetchPass]);
 
   useEffect(() => {
-    if (!canStillBeScanned) {
+    if (
+      status !== "authenticated" ||
+      !passId ||
+      !pass ||
+      !isQrApproved ||
+      pass.status === "Returned" ||
+      pass.status === "Expired" ||
+      pass.status === "Cancelled"
+    ) {
       setQrData("");
       setQrExpiresAt("");
+      setQrError("");
       return;
     }
 
     fetchQrToken();
 
-    const refreshToken = window.setInterval(fetchQrToken, 45000);
+    const refreshToken = window.setInterval(fetchQrToken, 4 * 60 * 1000);
 
     return () => window.clearInterval(refreshToken);
-  }, [canStillBeScanned, fetchQrToken]);
+  }, [status, passId, pass, isQrApproved, fetchQrToken]);
 
   useEffect(() => {
     if (!qrExpiresAt) {
@@ -356,13 +370,13 @@ function PassContent() {
           </div>
 
           {/* 🔥 QR (DISAPPEARS AFTER RETURNED OR EXPIRED) */}
-          <div className="mb-3 flex h-[150px] items-center justify-center sm:h-[170px]">
+          <div className="mb-3 flex min-h-[220px] items-center justify-center sm:min-h-[250px]">
             {canShowQr ? (
-              <div className="p-2 bg-white border rounded-xl">
-                <QRCodeSVG value={qrData} size={132} />
+              <div className="bg-white p-4 shadow-sm">
+                <QRCodeSVG value={qrData} size={190} level="M" marginSize={4} />
               </div>
             ) : (
-              <div className="flex h-[132px] w-[132px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center text-xs font-medium text-gray-500 sm:h-[150px] sm:w-[150px]">
+              <div className="flex h-[190px] w-[190px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center text-xs font-medium text-gray-500 sm:h-[210px] sm:w-[210px]">
                 {isHodRejected
                     ? "This long leave was rejected"
                   : isWardenRejected
@@ -373,8 +387,10 @@ function PassContent() {
                       ? "QR unlocks after HOD approval"
                       : needsWardenApproval
                         ? "QR unlocks after warden approval"
-                  : isAwaitingApproval
-                    ? `QR unlocks after ${pendingApprovalLabel} approval`
+    : isAwaitingApproval
+      ? `QR unlocks after ${pendingApprovalLabel} approval`
+                    : qrError
+                      ? qrError
                     : "QR no longer available"}
               </div>
             )}

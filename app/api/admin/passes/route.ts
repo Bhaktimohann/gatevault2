@@ -7,6 +7,7 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { isObjectId, readJson } from "@/lib/security";
+import { formatPassTime } from "@/lib/passDateTime";
 
 function isAdminEmail(email?: string | null) {
   const adminEmails = (process.env.ADMIN_EMAILS || "")
@@ -44,14 +45,6 @@ async function getAdminUser() {
   return user;
 }
 
-function formatTime(value: Date) {
-  return value.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
 export async function GET() {
   try {
     const admin = await getAdminUser();
@@ -78,8 +71,8 @@ export async function GET() {
 
     const formatPass = (pass: Record<string, unknown>) => ({
       ...pass,
-      timeOut: pass.timeOut instanceof Date ? formatTime(pass.timeOut) : pass.timeOut,
-      timeIn: pass.timeIn instanceof Date ? formatTime(pass.timeIn) : pass.timeIn,
+      timeOut: pass.timeOut instanceof Date ? formatPassTime(pass.timeOut) : pass.timeOut,
+      timeIn: pass.timeIn instanceof Date ? formatPassTime(pass.timeIn) : pass.timeIn,
       approvalStatus: pass.approvalStatus || "Pending",
     });
 
@@ -132,13 +125,17 @@ export async function PATCH(req: Request) {
           };
 
     const pass = await Pass.findOneAndUpdate(
-      { _id: passId, passType: { $ne: "LongLeave" } },
+      {
+        _id: passId,
+        passType: { $ne: "LongLeave" },
+        status: { $ne: "Cancelled" },
+      },
       update,
       { new: true }
     );
 
     if (!pass) {
-      return NextResponse.json({ message: "Pass not found" }, { status: 404 });
+      return NextResponse.json({ message: "Pass not found or already cancelled" }, { status: 404 });
     }
 
     if (action === "reject") {

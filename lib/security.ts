@@ -47,6 +47,10 @@ function envList(name: string) {
     .filter(Boolean);
 }
 
+function envDomainList(name: string) {
+  return envList(name).map((value) => value.replace(/^@+/, ""));
+}
+
 export function isPrivilegedRole(role?: string) {
   return role === "admin" || role === "hod" || role === "warden" || role === "security";
 }
@@ -54,7 +58,7 @@ export function isPrivilegedRole(role?: string) {
 export function isEmailAllowedForSignup(email: string) {
   const normalizedEmail = normalizeEmail(email);
   const domain = normalizedEmail.split("@")[1] || "";
-  const allowedDomains = [...envList("COLLEGE_EMAIL_DOMAINS"), ...envList("ALLOWED_EMAIL_DOMAINS")];
+  const allowedDomains = [...envDomainList("COLLEGE_EMAIL_DOMAINS"), ...envDomainList("ALLOWED_EMAIL_DOMAINS")];
   const allowedEmails = [
     ...envList("ALLOWED_SIGNUP_EMAILS"),
     ...envList("ALLOWED_STUDENT_EMAILS"),

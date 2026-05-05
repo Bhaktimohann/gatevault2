@@ -6,6 +6,7 @@ import Pass from "@/models/Pass";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { isObjectId, readJson } from "@/lib/security";
+import { formatPassDateInput, formatPassTime, parseDateOnly, parsePassDateTime } from "@/lib/passDateTime";
 import {
   DEFAULT_SHORT_PASS_DURATION_HOURS,
   DEFAULT_SHORT_PASS_GRACE_MINUTES,
@@ -61,22 +62,6 @@ function getSessionUser(session: { user?: unknown } | null) {
   return user?.id ? { id: user.id } : null;
 }
 
-function parseDateTime(dateValue: string, timeValue: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || !/^\d{2}:\d{2}$/.test(timeValue)) {
-    return null;
-  }
-
-  const date = new Date(`${dateValue}T${timeValue}:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDateInput(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);
@@ -84,10 +69,10 @@ function addDays(date: Date, days: number) {
 }
 
 function inclusiveLeaveDays(startDate: string, endDate: string) {
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
+  const start = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+  if (!start || !end) {
     return 0;
   }
 
@@ -164,14 +149,6 @@ function hasPendingApproval(pass: {
   );
 }
 
-function formatTime(value: Date) {
-  return value.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
 export async function POST(req: Request) {
   try {
     if (!isSameOriginRequest(req)) {
@@ -201,7 +178,7 @@ export async function POST(req: Request) {
     const person = body.person?.trim() || undefined;
     const personPhone = body.personPhone?.replace(/\D/g, "") || undefined;
     const passType = body.passType === "LongLeave" ? "LongLeave" : "Short";
-    const passDate = formatDateInput(new Date());
+    const passDate = formatPassDateInput(new Date());
     const leaveStartDate = passType === "Short" ? body.leaveStartDate || passDate : body.leaveStartDate;
     const leaveEndDate = passType === "Short" ? body.leaveEndDate || leaveStartDate : body.leaveEndDate;
     const timeOut = body.timeOut;
@@ -233,10 +210,10 @@ export async function POST(req: Request) {
     }
 
     if (passType === "LongLeave") {
-      const todayStart = new Date(`${passDate}T00:00:00`);
-      const requestedStart = new Date(`${leaveStartDate}T00:00:00`);
+      const todayStart = parseDateOnly(passDate);
+      const requestedStart = parseDateOnly(leaveStartDate);
 
-      if (requestedStart < todayStart) {
+      if (!todayStart || !requestedStart || requestedStart < todayStart) {
         return NextResponse.json({ message: "Leave start date cannot be in the past" }, { status: 400 });
       }
 
@@ -245,9 +222,9 @@ export async function POST(req: Request) {
       }
     }
 
-    const timeOutDate = parseDateTime(leaveStartDate, timeOut);
-    let timeInDate = parseDateTime(leaveEndDate, timeIn);
-    const leaveStartDateValue = new Date(`${leaveStartDate}T00:00:00`);
+    const timeOutDate = parsePassDateTime(leaveStartDate, timeOut);
+    let timeInDate = parsePassDateTime(leaveEndDate, timeIn);
+    const leaveStartDateValue = parsePassDateTime(leaveStartDate, "00:00");
 
     if (!timeOutDate || !timeInDate) {
       return NextResponse.json({ message: "Invalid date or time format" }, { status: 400 });
@@ -257,7 +234,7 @@ export async function POST(req: Request) {
       timeInDate = addDays(timeInDate, 1);
     }
 
-    const leaveEndDateValue = new Date(`${formatDateInput(timeInDate)}T00:00:00`);
+    const leaveEndDateValue = parsePassDateTime(formatPassDateInput(timeInDate), "00:00");
 
     if (timeInDate <= timeOutDate) {
       return NextResponse.json({ message: "Time In must be after Time Out" }, { status: 400 });
@@ -404,10 +381,10 @@ export async function GET() {
     const formattedPasses = (passes as LeanPass[]).map((pass) => ({
         ...pass,
         timeOut: pass.timeOut instanceof Date
-          ? formatTime(pass.timeOut)
+          ? formatPassTime(pass.timeOut)
           : pass.timeOut,
         timeIn: pass.timeIn instanceof Date
-          ? formatTime(pass.timeIn)
+          ? formatPassTime(pass.timeIn)
           : pass.timeIn,
         status: pass.status === "Cancelled"
           ? "Cancelled"

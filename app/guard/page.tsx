@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Html5Qrcode, Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useSession } from "next-auth/react";
 import { PageSkeleton } from "@/components/LoadingSkeleton";
 
 const DUPLICATE_SCAN_COOLDOWN_MS = 15000;
+const SCANNER_ELEMENT_ID = "qr-reader";
+
+type CameraDevice = {
+  id: string;
+  label: string;
+};
 
 export default function GuardPage() {
   const router = useRouter();
@@ -14,7 +20,10 @@ export default function GuardPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [manualInput, setManualInput] = useState("");
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const [scannerError, setScannerError] = useState("");
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileScannerRef = useRef<Html5Qrcode | null>(null);
   const processingRef = useRef(false);
   const lastScanRef = useRef<{ value: string; scannedAt: number } | null>(null);
@@ -74,6 +83,78 @@ export default function GuardPage() {
     // Regular scan failures happen continuously when no QR is in view.
   }, []);
 
+  const stopScanner = useCallback(async () => {
+    if (!scannerRef.current) {
+      return;
+    }
+
+    try {
+      if (scannerRef.current.isScanning) {
+        await scannerRef.current.stop();
+      }
+      await scannerRef.current.clear();
+    } catch (error) {
+      console.error("Scanner stop failed:", error);
+    } finally {
+      scannerRef.current = null;
+    }
+  }, []);
+
+  const getPreferredCameraId = useCallback((availableCameras: CameraDevice[]) => {
+    if (selectedCameraId && availableCameras.some((camera) => camera.id === selectedCameraId)) {
+      return selectedCameraId;
+    }
+
+    const backCamera = availableCameras.find((camera) => /back|rear|environment/i.test(camera.label));
+    return backCamera?.id || availableCameras[0]?.id || "";
+  }, [selectedCameraId]);
+
+  const startScanner = useCallback(async () => {
+    if (typeof window === "undefined" || status !== "authenticated" || !canScan) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setScannerError("Camera access is not available in this browser. Use Scan QR from image or manual entry.");
+      return;
+    }
+
+    await stopScanner();
+
+    try {
+      const availableCameras = await Html5Qrcode.getCameras();
+      setCameras(availableCameras);
+
+      const cameraId = getPreferredCameraId(availableCameras);
+      if (!cameraId) {
+        setScannerError("No camera was found. Use Scan QR from image or manual entry.");
+        return;
+      }
+
+      setSelectedCameraId(cameraId);
+      const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
+        verbose: false,
+      });
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        cameraId,
+        {
+          fps: 15,
+          qrbox: { width: 280, height: 280 },
+          aspectRatio: 1,
+        },
+        onScanSuccess,
+        onScanFailure
+      );
+      setScannerError("");
+    } catch (error) {
+      console.error("Scanner initialization failed:", error);
+      scannerRef.current = null;
+      setScannerError("Could not start the camera. Close other apps using the camera, allow camera permission, then tap Retry camera.");
+    }
+  }, [canScan, getPreferredCameraId, onScanFailure, onScanSuccess, status, stopScanner]);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -84,27 +165,12 @@ export default function GuardPage() {
       return;
     }
 
-    // Only initialize scanner on client side
-    if (typeof window !== "undefined") {
-      scannerRef.current = new Html5QrcodeScanner(
-        "qr-reader",
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        },
-        false
-      );
-
-      scannerRef.current.render(onScanSuccess, onScanFailure);
-    }
+    startScanner();
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
-      }
+      stopScanner();
     };
-  }, [status, canScan, router, onScanSuccess, onScanFailure]);
+  }, [status, canScan, router, startScanner, stopScanner]);
 
   const handleManualScan = (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,8 +250,37 @@ export default function GuardPage() {
             )}
 
             {/* QR SCANNER CONTAINER */}
-            <div id="qr-reader" className="w-full rounded-2xl overflow-hidden shadow-inner mb-6"></div>
+            <div id={SCANNER_ELEMENT_ID} className="w-full rounded-2xl overflow-hidden shadow-inner mb-6"></div>
             <div id="qr-file-reader" className="hidden"></div>
+
+            {scannerError && (
+              <div className="mb-6 rounded-xl bg-amber-50 p-4 text-center text-sm font-semibold text-amber-700">
+                {scannerError}
+              </div>
+            )}
+
+            <div className="mb-4 grid gap-2">
+              {cameras.length > 1 && (
+                <select
+                  value={selectedCameraId}
+                  onChange={(event) => setSelectedCameraId(event.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700"
+                >
+                  {cameras.map((camera, index) => (
+                    <option key={camera.id} value={camera.id}>
+                      {camera.label || `Camera ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={startScanner}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                Retry camera
+              </button>
+            </div>
 
             {loading && (
               <div className="text-center text-blue-500 font-medium my-4 animate-pulse">

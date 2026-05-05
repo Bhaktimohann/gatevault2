@@ -536,7 +536,7 @@ export default function AdminDashboard() {
               <article className={`rounded-[28px] border p-5 shadow-xl backdrop-blur-2xl ${panelClass}`}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold">Enhanced Request Table</h2>
+                    <h2 className="text-lg font-semibold">Request Table</h2>
                     <p className={`text-sm ${mutedText}`}>Search, filter, sort, inspect, export, approve, or reject</p>
                   </div>
                   <div className="flex flex-wrap gap-2">

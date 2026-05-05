@@ -7,6 +7,7 @@ import Pass from "@/models/Pass";
 import User from "@/models/User";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { isObjectId, readJson } from "@/lib/security";
+import { formatPassTime } from "@/lib/passDateTime";
 
 async function getWardenUser() {
   const session = await getServerSession(authOptions);
@@ -22,19 +23,11 @@ async function getWardenUser() {
   return user;
 }
 
-function formatTime(value: Date) {
-  return value.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
 function formatPass(pass: Record<string, unknown>) {
   return {
     ...pass,
-    timeOut: pass.timeOut instanceof Date ? formatTime(pass.timeOut) : pass.timeOut,
-    timeIn: pass.timeIn instanceof Date ? formatTime(pass.timeIn) : pass.timeIn,
+    timeOut: pass.timeOut instanceof Date ? formatPassTime(pass.timeOut) : pass.timeOut,
+    timeIn: pass.timeIn instanceof Date ? formatPassTime(pass.timeIn) : pass.timeIn,
     leaveStartDate: pass.leaveStartDate instanceof Date ? pass.leaveStartDate.toISOString() : pass.leaveStartDate,
     leaveEndDate: pass.leaveEndDate instanceof Date ? pass.leaveEndDate.toISOString() : pass.leaveEndDate,
     approvalStatus: pass.approvalStatus || "Pending",

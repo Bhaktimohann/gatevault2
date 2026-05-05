@@ -11,8 +11,10 @@ import {
   DEFAULT_SHORT_PASS_GRACE_MINUTES,
   addHours,
   evaluateShortPass,
+  minutesBetween,
 } from "@/lib/shortPassLogic";
 import Pass from "@/models/Pass";
+import Notification from "@/models/Notification";
 
 type SessionUser = {
   id: string;
@@ -216,7 +218,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "This short pass is overdue" }, { status: 400 });
     }
 
-    if (pass.passType === "LongLeave" && pass.timeIn <= now && pass.status !== "Returned") {
+    if (
+      pass.passType === "LongLeave" &&
+      pass.timeIn <= now &&
+      pass.status !== "Returned" &&
+      !pass.scannedOutAt
+    ) {
       pass.status = "Expired";
       pass.qrTokenHash = undefined;
       pass.qrTokenExpiresAt = undefined;
@@ -227,6 +234,7 @@ export async function POST(req: Request) {
     let query: Record<string, unknown>;
     let update: Record<string, unknown>;
     let message = "";
+    let lateReturnMinutes = 0;
 
     if (!pass.scannedOutAt && (pass.status === "Active" || pass.status === "Pending")) {
       query = {
@@ -258,6 +266,12 @@ export async function POST(req: Request) {
               graceMinutes: pass.graceMinutes || DEFAULT_SHORT_PASS_GRACE_MINUTES,
             })
           : null;
+      lateReturnMinutes =
+        pass.passType === "LongLeave"
+          ? Math.max(0, minutesBetween(pass.timeIn, now))
+          : shortPassReturn?.status === "Late"
+            ? shortPassReturn.lateDurationMinutes
+            : 0;
 
       query = {
         _id: pass._id,
@@ -274,16 +288,20 @@ export async function POST(req: Request) {
           scannedInAt: now,
           scannedInBy: sessionUser.id,
           shortPassStatus: shortPassReturn?.status,
-          expectedReturnTime: shortPassReturn?.expectedReturnTime,
-          totalDurationMinutes: shortPassReturn?.totalDurationMinutes,
-          lateDurationMinutes: shortPassReturn?.lateDurationMinutes,
+          expectedReturnTime: shortPassReturn?.expectedReturnTime || (pass.passType === "LongLeave" ? pass.timeIn : undefined),
+          totalDurationMinutes:
+            shortPassReturn?.totalDurationMinutes ?? (pass.passType === "LongLeave" ? minutesBetween(pass.timeOut, now) : undefined),
+          lateDurationMinutes: lateReturnMinutes || shortPassReturn?.lateDurationMinutes,
         },
         $unset: {
           qrTokenHash: "",
           qrTokenExpiresAt: "",
         },
       };
-      message = "Student Scanned IN (Returned)";
+      message =
+        lateReturnMinutes > 0
+          ? `Student Scanned IN (Returned Late by ${lateReturnMinutes} minutes)`
+          : "Student Scanned IN (Returned)";
     } else if (pass.status === "Returned" || pass.scannedInAt) {
       return NextResponse.json({ message: "Pass has already been used for return" }, { status: 400 });
     } else if (pass.status === "Expired") {
@@ -296,6 +314,16 @@ export async function POST(req: Request) {
 
     if (!updatedPass) {
       return NextResponse.json({ message: "Pass scan state changed. Please scan again." }, { status: 409 });
+    }
+
+    if (lateReturnMinutes > 0) {
+      await Notification.create({
+        user: pass.user,
+        pass: pass._id,
+        title: "Warning: Late return",
+        message: `You returned ${lateReturnMinutes} minutes late for your pass to ${pass.place}. Please return within the approved gate-pass time.`,
+        type: "warning",
+      });
     }
 
     return NextResponse.json({ message, pass: updatedPass }, { status: 200 });

@@ -43,6 +43,10 @@ export default function SecurityDashboard() {
 
   const canView = role === "security" || role === "admin";
 
+  const openScanner = () => {
+    window.location.assign("/guard");
+  };
+
   const fetchScanStats = async () => {
     setLoadingStats(true);
     setError("");
@@ -169,7 +173,7 @@ export default function SecurityDashboard() {
                 </p>
               </div>
 
-              <button type="button" onClick={() => router.push("/guard")} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white">
+              <button type="button" onClick={openScanner} className="inline-flex h-11 items-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white">
                 <QrCode size={16} />
                 Open Scanner
               </button>
@@ -207,7 +211,7 @@ export default function SecurityDashboard() {
               <p className="mt-1 text-sm text-slate-500">Open the scanner or refresh activity before shift handoff.</p>
 
               <div className="mt-5 grid gap-3">
-                <button type="button" onClick={() => router.push("/guard")} className="rounded-3xl border border-white/70 bg-[#f8f2e8]/84 p-4 text-left transition hover:bg-white">
+                <button type="button" onClick={openScanner} className="rounded-3xl border border-white/70 bg-[#f8f2e8]/84 p-4 text-left transition hover:bg-white">
                   <div className="flex items-center gap-3">
                     <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-300 text-slate-950">
                       <QrCode size={22} />

@@ -68,10 +68,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Pass is not approved for QR yet" }, { status: 400 });
     }
 
-    if (pass.timeOut > now) {
-      return NextResponse.json({ message: "Pass is not valid for QR yet" }, { status: 400 });
-    }
-
     if (pass.passType !== "LongLeave" && !pass.scannedOutAt && now > addHours(pass.timeOut, pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS)) {
       return NextResponse.json({ message: "Pass is overdue" }, { status: 400 });
     }
@@ -85,7 +81,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Pass is no longer valid" }, { status: 400 });
     }
 
-    const token = createQrToken(String(pass._id), String(pass.user), 60);
+    const token = createQrToken(String(pass._id), String(pass.user), 5 * 60);
 
     pass.qrTokenHash = token.jtiHash;
     pass.qrTokenExpiresAt = token.expiresAt;
