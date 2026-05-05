@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
@@ -71,6 +71,7 @@ type QueueRow = HodPass & {
 
 type SortKey = "student" | "place" | "status" | "date";
 type DashboardView = "dashboard" | "requests" | "calendar" | "reports";
+const PASS_REFRESH_INTERVAL_MS = 5000;
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -128,12 +129,17 @@ export default function HodDashboard() {
 
   const isHod = (session?.user as { role?: string } | undefined)?.role === "hod";
 
-  const fetchPasses = async () => {
-    setLoading(true);
+  const fetchPasses = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
     setError("");
 
     try {
-      const res = await fetch("/api/hod/passes");
+      const res = await fetch(`/api/hod/passes?ts=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -147,7 +153,7 @@ export default function HodDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -162,9 +168,32 @@ export default function HodDashboard() {
         return;
       }
 
-      fetchPasses();
+      fetchPasses(true);
     }
-  }, [status, isHod, router]);
+  }, [status, isHod, router, fetchPasses]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !isHod) {
+      return;
+    }
+
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchPasses();
+      }
+    };
+
+    const refresh = () => fetchPasses();
+    const interval = window.setInterval(refresh, PASS_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshOnVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshOnVisibility);
+    };
+  }, [status, isHod, fetchPasses]);
 
   const decidePass = async (passId: string, action: "approve" | "reject") => {
     setUpdatingId(passId);
@@ -398,8 +427,8 @@ export default function HodDashboard() {
 
           <div className="mt-10 rounded-3xl bg-white/8 p-4">
             <p className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={16} /> Live Pulse</p>
-            <p className="mt-2 text-xs leading-5 text-white/56">Queue refresh is one tap away. The layout is ready for websocket updates when your API exposes them.</p>
-            <button type="button" onClick={fetchPasses} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-950">
+            <p className="mt-2 text-xs leading-5 text-white/56">Requests refresh automatically while this page is open. Manual refresh is still available.</p>
+            <button type="button" onClick={() => fetchPasses()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-950">
               <RefreshCw size={15} />
               Refresh
             </button>
@@ -678,7 +707,7 @@ export default function HodDashboard() {
             <article className={`rounded-[28px] border p-5 shadow-xl backdrop-blur-2xl ${panelClass}`}>
               <h2 className="text-lg font-semibold">Refresh Queue</h2>
               <p className={`mt-2 text-sm ${mutedText}`}>Pull the latest HOD requests and logs from the server.</p>
-              <button type="button" onClick={fetchPasses} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+              <button type="button" onClick={() => fetchPasses()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
                 <RefreshCw size={16} />
                 Refresh live queue
               </button>

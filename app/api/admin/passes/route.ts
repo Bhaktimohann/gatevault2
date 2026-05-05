@@ -7,7 +7,7 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { isObjectId, readJson } from "@/lib/security";
-import { formatPassTime } from "@/lib/passDateTime";
+import { formatDisplayPassTime } from "@/lib/passDateTime";
 
 function isAdminEmail(email?: string | null) {
   const adminEmails = (process.env.ADMIN_EMAILS || "")
@@ -71,8 +71,8 @@ export async function GET() {
 
     const formatPass = (pass: Record<string, unknown>) => ({
       ...pass,
-      timeOut: pass.timeOut instanceof Date ? formatPassTime(pass.timeOut) : pass.timeOut,
-      timeIn: pass.timeIn instanceof Date ? formatPassTime(pass.timeIn) : pass.timeIn,
+      timeOut: formatDisplayPassTime(pass.timeOut, pass.requestedTimeOut),
+      timeIn: formatDisplayPassTime(pass.timeIn, pass.requestedTimeIn),
       approvalStatus: pass.approvalStatus || "Pending",
     });
 

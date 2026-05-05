@@ -38,6 +38,12 @@ const PassSchema = new Schema(
       type: Date,
       required: true,
     },
+    requestedTimeOut: {
+      type: String,
+    },
+    requestedTimeIn: {
+      type: String,
+    },
     person: {
       type: String,
     },
@@ -135,6 +141,10 @@ PassSchema.index({ approvalStatus: 1, createdAt: -1 });
 PassSchema.index({ hodApprovalStatus: 1, createdAt: -1 });
 PassSchema.index({ wardenApprovalStatus: 1, createdAt: -1 });
 PassSchema.index({ qrTokenHash: 1, qrTokenExpiresAt: 1 });
+
+if (models.Pass && !models.Pass.schema.path("requestedTimeOut")) {
+  mongoose.deleteModel("Pass");
+}
 
 const Pass = models.Pass || model("Pass", PassSchema);
 

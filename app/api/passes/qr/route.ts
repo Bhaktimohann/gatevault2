@@ -6,7 +6,6 @@ import dbConnect from "@/lib/mongodb";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { createQrToken } from "@/lib/qrToken";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
-import { DEFAULT_SHORT_PASS_DURATION_HOURS, addHours } from "@/lib/shortPassLogic";
 import Pass from "@/models/Pass";
 
 type SessionUser = {
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Pass is not approved for QR yet" }, { status: 400 });
     }
 
-    if (pass.passType !== "LongLeave" && !pass.scannedOutAt && now > addHours(pass.timeOut, pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS)) {
+    if (pass.passType !== "LongLeave" && !pass.scannedOutAt && now > pass.timeIn) {
       return NextResponse.json({ message: "Pass is overdue" }, { status: 400 });
     }
 

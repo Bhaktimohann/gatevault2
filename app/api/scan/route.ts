@@ -9,7 +9,6 @@ import { isSameOriginRequest } from "@/lib/requestSecurity";
 import {
   DEFAULT_SHORT_PASS_DURATION_HOURS,
   DEFAULT_SHORT_PASS_GRACE_MINUTES,
-  addHours,
   evaluateShortPass,
   minutesBetween,
 } from "@/lib/shortPassLogic";
@@ -202,9 +201,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "This pass is not valid for scanning yet" }, { status: 400 });
     }
 
-    if (pass.passType !== "LongLeave" && !pass.scannedOutAt && now > addHours(pass.timeOut, pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS)) {
+    if (pass.passType !== "LongLeave" && !pass.scannedOutAt && now > pass.timeIn) {
       const overdueShortPass = evaluateShortPass({
         outTime: pass.timeOut,
+        expectedReturnTime: pass.timeIn,
         allowedDurationHours: pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS,
         graceMinutes: pass.graceMinutes || DEFAULT_SHORT_PASS_GRACE_MINUTES,
         currentTime: now,
@@ -262,6 +262,7 @@ export async function POST(req: Request) {
           ? evaluateShortPass({
               outTime: pass.timeOut,
               inTime: now,
+              expectedReturnTime: pass.timeIn,
               allowedDurationHours: pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS,
               graceMinutes: pass.graceMinutes || DEFAULT_SHORT_PASS_GRACE_MINUTES,
             })

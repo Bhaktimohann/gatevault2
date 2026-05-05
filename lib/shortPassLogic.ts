@@ -6,6 +6,7 @@ export type ShortPassStatus = "Active" | "Overdue" | "On Time" | "On Time (Grace
 type ShortPassInput = {
   outTime: Date;
   inTime?: Date | null;
+  expectedReturnTime?: Date | null;
   allowedDurationHours?: number;
   graceMinutes?: number;
   currentTime?: Date;
@@ -26,14 +27,15 @@ export function minutesBetween(start: Date, end: Date) {
 export function evaluateShortPass({
   outTime,
   inTime = null,
+  expectedReturnTime: requestedExpectedReturnTime = null,
   allowedDurationHours = DEFAULT_SHORT_PASS_DURATION_HOURS,
   graceMinutes = DEFAULT_SHORT_PASS_GRACE_MINUTES,
   currentTime = new Date(),
 }: ShortPassInput) {
-  const expectedReturnTime = addHours(outTime, allowedDurationHours);
+  const expectedReturnTime = requestedExpectedReturnTime || addHours(outTime, allowedDurationHours);
   const graceReturnTime = addMinutes(expectedReturnTime, graceMinutes);
 
-  if (inTime && inTime <= outTime) {
+  if (expectedReturnTime <= outTime || (inTime && inTime <= outTime)) {
     return {
       status: "Invalid Short Pass" as ShortPassStatus,
       totalDurationMinutes: 0,

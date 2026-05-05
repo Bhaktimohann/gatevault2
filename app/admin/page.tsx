@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
@@ -71,6 +71,7 @@ type QueueRow = AdminPass & {
 
 type SortKey = "student" | "place" | "status" | "date";
 type DashboardView = "dashboard" | "requests" | "calendar" | "reports";
+const PASS_REFRESH_INTERVAL_MS = 5000;
 
 function safeDate(value?: string) {
   const date = value ? new Date(value) : new Date();
@@ -128,12 +129,17 @@ export default function AdminDashboard() {
 
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "admin";
 
-  const fetchPasses = async () => {
-    setLoading(true);
+  const fetchPasses = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
     setError("");
 
     try {
-      const res = await fetch("/api/admin/passes");
+      const res = await fetch(`/api/admin/passes?ts=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -147,7 +153,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -162,9 +168,32 @@ export default function AdminDashboard() {
         return;
       }
 
-      fetchPasses();
+      fetchPasses(true);
     }
-  }, [status, isAdmin, router]);
+  }, [status, isAdmin, router, fetchPasses]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !isAdmin) {
+      return;
+    }
+
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchPasses();
+      }
+    };
+
+    const refresh = () => fetchPasses();
+    const interval = window.setInterval(refresh, PASS_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshOnVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshOnVisibility);
+    };
+  }, [status, isAdmin, fetchPasses]);
 
   const decidePass = async (passId: string, action: "approve" | "reject") => {
     setUpdatingId(passId);
@@ -400,7 +429,7 @@ export default function AdminDashboard() {
           <div className="mt-10 rounded-3xl bg-white/8 p-4">
             <p className="flex items-center gap-2 text-sm font-semibold"><Sparkles size={16} /> Live Pulse</p>
             <p className="mt-2 text-xs leading-5 text-white/56">Queue refresh, exports, and approval history are all available from this console.</p>
-            <button type="button" onClick={fetchPasses} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-950">
+            <button type="button" onClick={() => fetchPasses()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-slate-950">
               <RefreshCw size={15} />
               Refresh
             </button>
@@ -685,7 +714,7 @@ export default function AdminDashboard() {
               <article className={`rounded-[28px] border p-5 shadow-xl backdrop-blur-2xl ${panelClass}`}>
                 <h2 className="text-lg font-semibold">Refresh Queue</h2>
                 <p className={`mt-2 text-sm ${mutedText}`}>Pull the latest admin requests and logs from the server.</p>
-                <button type="button" onClick={fetchPasses} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+                <button type="button" onClick={() => fetchPasses()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
                   <RefreshCw size={16} />
                   Refresh live queue
                 </button>

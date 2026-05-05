@@ -6,12 +6,11 @@ import Pass from "@/models/Pass";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { isObjectId, readJson } from "@/lib/security";
-import { formatPassDateInput, formatPassTime, parseDateOnly, parsePassDateTime } from "@/lib/passDateTime";
+import { formatDisplayPassTime, formatPassDateInput, parseDateOnly, parsePassDateTime } from "@/lib/passDateTime";
 import { createQrToken } from "@/lib/qrToken";
 import {
   DEFAULT_SHORT_PASS_DURATION_HOURS,
   DEFAULT_SHORT_PASS_GRACE_MINUTES,
-  addHours,
   evaluateShortPass,
   isInvalidRequestedShortPass,
   minutesBetween,
@@ -39,6 +38,8 @@ type LeanPass = {
   user?: unknown;
   timeOut?: Date | string;
   timeIn?: Date | string;
+  requestedTimeOut?: string;
+  requestedTimeIn?: string;
   status?: string;
   approvalStatus?: string;
   hodApprovalStatus?: string;
@@ -126,6 +127,7 @@ function getShortPassDetails(pass: LeanPass, now = new Date()) {
 
   const result = evaluateShortPass({
     outTime: pass.timeOut,
+    expectedReturnTime: pass.timeIn instanceof Date ? pass.timeIn : null,
     inTime: pass.scannedInAt || null,
     allowedDurationHours: pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS,
     graceMinutes: pass.graceMinutes || DEFAULT_SHORT_PASS_GRACE_MINUTES,
@@ -183,7 +185,8 @@ function canIssueQr(pass: LeanPass, now = new Date()) {
     pass.passType !== "LongLeave" &&
     !pass.scannedOutAt &&
     pass.timeOut instanceof Date &&
-    now > addHours(pass.timeOut, pass.allowedDurationHours || DEFAULT_SHORT_PASS_DURATION_HOURS)
+    pass.timeIn instanceof Date &&
+    now > pass.timeIn
   ) {
     return false;
   }
@@ -264,7 +267,7 @@ export async function POST(req: Request) {
       }
     }
 
-    let timeOutDate = parsePassDateTime(leaveStartDate, timeOut);
+    const timeOutDate = parsePassDateTime(leaveStartDate, timeOut);
     let timeInDate = parsePassDateTime(leaveEndDate, timeIn);
     const leaveStartDateValue = parsePassDateTime(leaveStartDate, "00:00");
 
@@ -340,6 +343,7 @@ export async function POST(req: Request) {
       passType === "Short"
         ? evaluateShortPass({
             outTime: timeOutDate,
+            expectedReturnTime: timeInDate,
             currentTime: new Date(),
           })
         : null;
@@ -354,6 +358,8 @@ export async function POST(req: Request) {
       leaveEndDate: leaveEndDateValue,
       timeOut: timeOutDate,
       timeIn: timeInDate,
+      requestedTimeOut: timeOut,
+      requestedTimeIn: timeIn,
       person,
       personPhone,
       status: derivePassStatus(timeOutDate, timeInDate),
@@ -445,12 +451,8 @@ export async function GET() {
       return {
         ...pass,
         ...qrByPassId.get(String(pass._id)),
-        timeOut: pass.timeOut instanceof Date
-          ? formatPassTime(pass.timeOut)
-          : pass.timeOut,
-        timeIn: pass.timeIn instanceof Date
-          ? formatPassTime(pass.timeIn)
-          : pass.timeIn,
+        timeOut: formatDisplayPassTime(pass.timeOut, pass.requestedTimeOut),
+        timeIn: formatDisplayPassTime(pass.timeIn, pass.requestedTimeIn),
         status: pass.status === "Cancelled"
           ? "Cancelled"
           : pass.passType !== "LongLeave" && pass.timeOut instanceof Date

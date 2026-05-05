@@ -7,7 +7,7 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { isObjectId, readJson } from "@/lib/security";
-import { formatPassTime } from "@/lib/passDateTime";
+import { formatDisplayPassTime } from "@/lib/passDateTime";
 
 async function getHodUser() {
   const session = await getServerSession(authOptions);
@@ -30,8 +30,8 @@ async function getHodUser() {
 function formatPass(pass: Record<string, unknown>) {
   return {
     ...pass,
-    timeOut: pass.timeOut instanceof Date ? formatPassTime(pass.timeOut) : pass.timeOut,
-    timeIn: pass.timeIn instanceof Date ? formatPassTime(pass.timeIn) : pass.timeIn,
+    timeOut: formatDisplayPassTime(pass.timeOut, pass.requestedTimeOut),
+    timeIn: formatDisplayPassTime(pass.timeIn, pass.requestedTimeIn),
     leaveStartDate: pass.leaveStartDate instanceof Date ? pass.leaveStartDate.toISOString() : pass.leaveStartDate,
     leaveEndDate: pass.leaveEndDate instanceof Date ? pass.leaveEndDate.toISOString() : pass.leaveEndDate,
     hodApprovalStatus: pass.hodApprovalStatus || "Pending",

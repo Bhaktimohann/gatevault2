@@ -1,6 +1,7 @@
 export const PASS_TIME_ZONE = "Asia/Kolkata";
 
 const IST_OFFSET_MINUTES = 5 * 60 + 30;
+const PASS_TIME_PATTERN = /^\d{2}:\d{2}$/;
 
 export function parsePassDateTime(dateValue: string, timeValue: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || !/^\d{2}:\d{2}$/.test(timeValue)) {
@@ -49,10 +50,18 @@ export function parseDateOnly(dateValue: string) {
 }
 
 export function formatPassTime(value: Date) {
-  return value.toLocaleTimeString("en-US", {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: PASS_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-  });
+    hourCycle: "h23",
+  }).format(value);
+}
+
+export function formatDisplayPassTime(value: unknown, requestedValue?: unknown) {
+  if (typeof requestedValue === "string" && PASS_TIME_PATTERN.test(requestedValue)) {
+    return requestedValue;
+  }
+
+  return value instanceof Date ? formatPassTime(value) : value;
 }
