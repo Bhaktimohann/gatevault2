@@ -40,36 +40,8 @@ export function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function envList(name: string) {
-  return (process.env[name] || "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function envDomainList(name: string) {
-  return envList(name).map((value) => value.replace(/^@+/, ""));
-}
-
 export function isPrivilegedRole(role?: string) {
   return role === "admin" || role === "hod" || role === "warden" || role === "security";
-}
-
-export function isEmailAllowedForSignup(email: string) {
-  const normalizedEmail = normalizeEmail(email);
-  const domain = normalizedEmail.split("@")[1] || "";
-  const allowedDomains = [...envDomainList("COLLEGE_EMAIL_DOMAINS"), ...envDomainList("ALLOWED_EMAIL_DOMAINS")];
-  const allowedEmails = [
-    ...envList("ALLOWED_SIGNUP_EMAILS"),
-    ...envList("ALLOWED_STUDENT_EMAILS"),
-    ...envList("ADMIN_EMAILS"),
-  ];
-
-  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
-    return false;
-  }
-
-  return allowedEmails.includes(normalizedEmail) || allowedDomains.includes(domain);
 }
 
 export function isValidPhone(value: string) {

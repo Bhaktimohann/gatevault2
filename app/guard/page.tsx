@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useSession } from "next-auth/react";
 import { PageSkeleton } from "@/components/LoadingSkeleton";
 
 const DUPLICATE_SCAN_COOLDOWN_MS = 15000;
 const SCANNER_ELEMENT_ID = "qr-reader";
+const SCAN_FPS = 30;
 
 type CameraDevice = {
   id: string;
@@ -27,6 +28,7 @@ export default function GuardPage() {
   const fileScannerRef = useRef<Html5Qrcode | null>(null);
   const processingRef = useRef(false);
   const lastScanRef = useRef<{ value: string; scannedAt: number } | null>(null);
+  const selectedCameraIdRef = useRef("");
   const role = (session?.user as { role?: string } | undefined)?.role;
   const canScan = role === "security" || role === "admin";
 
@@ -101,13 +103,22 @@ export default function GuardPage() {
   }, []);
 
   const getPreferredCameraId = useCallback((availableCameras: CameraDevice[]) => {
-    if (selectedCameraId && availableCameras.some((camera) => camera.id === selectedCameraId)) {
-      return selectedCameraId;
+    const activeCameraId = selectedCameraIdRef.current;
+
+    if (activeCameraId && availableCameras.some((camera) => camera.id === activeCameraId)) {
+      return activeCameraId;
     }
 
     const backCamera = availableCameras.find((camera) => /back|rear|environment/i.test(camera.label));
     return backCamera?.id || availableCameras[0]?.id || "";
-  }, [selectedCameraId]);
+  }, []);
+
+  const getScanBoxSize = useCallback((viewfinderWidth: number, viewfinderHeight: number) => {
+    const shortestSide = Math.min(viewfinderWidth, viewfinderHeight);
+    const size = Math.floor(Math.min(Math.max(shortestSide * 0.78, 260), 420));
+
+    return { width: size, height: size };
+  }, []);
 
   const startScanner = useCallback(async () => {
     if (typeof window === "undefined" || status !== "authenticated" || !canScan) {
@@ -131,18 +142,28 @@ export default function GuardPage() {
         return;
       }
 
+      selectedCameraIdRef.current = cameraId;
       setSelectedCameraId(cameraId);
       const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
         verbose: false,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        useBarCodeDetectorIfSupported: true,
       });
       scannerRef.current = scanner;
 
       await scanner.start(
         cameraId,
         {
-          fps: 15,
-          qrbox: { width: 280, height: 280 },
-          aspectRatio: 1,
+          fps: SCAN_FPS,
+          qrbox: getScanBoxSize,
+          aspectRatio: 1.333334,
+          disableFlip: true,
+          videoConstraints: {
+            deviceId: { exact: cameraId },
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
         },
         onScanSuccess,
         onScanFailure
@@ -153,7 +174,7 @@ export default function GuardPage() {
       scannerRef.current = null;
       setScannerError("Could not start the camera. Close other apps using the camera, allow camera permission, then tap Retry camera.");
     }
-  }, [canScan, getPreferredCameraId, onScanFailure, onScanSuccess, status, stopScanner]);
+  }, [canScan, getPreferredCameraId, getScanBoxSize, onScanFailure, onScanSuccess, status, stopScanner]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -263,7 +284,11 @@ export default function GuardPage() {
               {cameras.length > 1 && (
                 <select
                   value={selectedCameraId}
-                  onChange={(event) => setSelectedCameraId(event.target.value)}
+                  onChange={(event) => {
+                    selectedCameraIdRef.current = event.target.value;
+                    setSelectedCameraId(event.target.value);
+                    startScanner();
+                  }}
                   className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700"
                 >
                   {cameras.map((camera, index) => (

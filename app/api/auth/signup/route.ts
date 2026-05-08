@@ -4,7 +4,7 @@ import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
-import { isEmailAllowedForSignup, readJson, validatePassword } from "@/lib/security";
+import { readJson, validatePassword } from "@/lib/security";
 
 function getRoleForEmail(email: string) {
   const adminEmails = (process.env.ADMIN_EMAILS || "")
@@ -68,13 +68,6 @@ export async function POST(req: Request) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json({ message: "Enter a valid email address" }, { status: 400 });
-    }
-
-    if (!isEmailAllowedForSignup(normalizedEmail)) {
-      return NextResponse.json(
-        { message: "Use your verified college email or contact admin for access" },
-        { status: 403 }
-      );
     }
 
     const phoneRegex = /^[6-9]\d{9}$/;

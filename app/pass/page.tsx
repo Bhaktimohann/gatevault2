@@ -26,7 +26,6 @@ type GatePass = {
   scannedOutAt?: string;
   scannedInAt?: string;
   qrData?: string;
-  qrExpiresAt?: string;
 };
 
 function PassLoading() {
@@ -41,6 +40,12 @@ function formatPassDate(value?: string) {
   return value ? new Date(value).toLocaleDateString() : "";
 }
 
+function getQrStateKey(pass: GatePass | null) {
+  if (!pass) return "";
+
+  return [pass._id, pass.status || "", pass.scannedOutAt || "", pass.scannedInAt || ""].join(":");
+}
+
 function PassContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,9 +54,8 @@ function PassContent() {
 
   const [pass, setPass] = useState<GatePass | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expiredLocal, setExpiredLocal] = useState(false);
   const [qrData, setQrData] = useState("");
-  const [qrExpiresAt, setQrExpiresAt] = useState("");
+  const [qrStateKey, setQrStateKey] = useState("");
   const [qrError, setQrError] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
@@ -79,9 +83,7 @@ function PassContent() {
           setPass(foundPass);
           if (foundPass.qrData) {
             setQrData(foundPass.qrData);
-            setQrExpiresAt(foundPass.qrExpiresAt || "");
             setQrError("");
-            setExpiredLocal(false);
           }
         }
       }
@@ -108,21 +110,20 @@ function PassContent() {
 
       if (res.ok) {
         setQrData(data.qrData || "");
-        setQrExpiresAt(data.expiresAt || "");
+        setQrStateKey(data.qrData ? getQrStateKey(pass) : "");
         setQrError("");
-        setExpiredLocal(false);
       } else {
         setQrData("");
-        setQrExpiresAt("");
+        setQrStateKey("");
         setQrError(data.message || "QR is not available yet");
       }
     } catch (error) {
       console.error("Failed to fetch QR token:", error);
       setQrData("");
-      setQrExpiresAt("");
+      setQrStateKey("");
       setQrError("Could not load QR. Check your connection.");
     }
-  }, [passId]);
+  }, [pass, passId]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -179,7 +180,7 @@ function PassContent() {
 
       setPass(data.pass || { ...pass, status: "Cancelled" });
       setQrData("");
-      setQrExpiresAt("");
+      setQrStateKey("");
       setQrError("");
       router.replace("/dashboard");
     } catch {
@@ -227,33 +228,16 @@ function PassContent() {
       pass.status === "Cancelled"
     ) {
       setQrData("");
-      setQrExpiresAt("");
+      setQrStateKey("");
       setQrError("");
       return;
     }
 
-    fetchQrToken();
-
-    const refreshToken = window.setInterval(fetchQrToken, 4 * 60 * 1000);
-
-    return () => window.clearInterval(refreshToken);
-  }, [status, passId, pass, isQrApproved, fetchQrToken]);
-
-  useEffect(() => {
-    if (!qrExpiresAt) {
-      return;
+    const currentQrStateKey = getQrStateKey(pass);
+    if (!qrData || qrStateKey !== currentQrStateKey) {
+      fetchQrToken();
     }
-
-    const updateTimeLeft = () => {
-      const secondsLeft = Math.max(0, Math.ceil((new Date(qrExpiresAt).getTime() - Date.now()) / 1000));
-      setExpiredLocal(secondsLeft <= 0);
-    };
-
-    updateTimeLeft();
-    const timer = window.setInterval(updateTimeLeft, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [qrExpiresAt]);
+  }, [status, passId, pass, isQrApproved, qrData, qrStateKey, fetchQrToken]);
 
   if (status === "loading" || loading) {
     return <PassLoading />;
@@ -277,7 +261,7 @@ function PassContent() {
   const isAwaitingApproval = approvalStatus === "Pending";
   const isRejected = approvalStatus === "Rejected";
   const pendingApprovalLabel = pass?.passType === "LongLeave" ? "warden" : "admin";
-  const isInvalid = expiredLocal || actualStatus === "Expired" || actualStatus === "Returned" || isCancelled;
+  const isInvalid = actualStatus === "Expired" || actualStatus === "Returned" || isCancelled;
   const canCancelExpiredPendingPass = actualStatus === "Expired" && isWaitingForApproval;
   const canCancelPass =
     !!pass &&

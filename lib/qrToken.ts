@@ -5,7 +5,7 @@ type QrPayload = {
   userId: string;
   jti: string;
   purpose: "gate-pass-scan";
-  exp: number;
+  exp?: number;
   iat: number;
 };
 
@@ -47,7 +47,7 @@ export function hashQrTokenId(jti: string) {
   return crypto.createHash("sha256").update(jti).digest("hex");
 }
 
-export function createQrToken(passId: string, userId: string, ttlSeconds = 60) {
+export function createQrToken(passId: string, userId: string, ttlSeconds?: number) {
   const now = Math.floor(Date.now() / 1000);
   const payload: QrPayload = {
     passId,
@@ -55,15 +55,19 @@ export function createQrToken(passId: string, userId: string, ttlSeconds = 60) {
     jti: crypto.randomUUID(),
     purpose: "gate-pass-scan",
     iat: now,
-    exp: now + ttlSeconds,
   };
+
+  if (typeof ttlSeconds === "number") {
+    payload.exp = now + ttlSeconds;
+  }
+
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
   const signature = signPayload(encodedPayload);
 
   return {
     qrData: `${TOKEN_PREFIX}.${encodedPayload}.${signature}`,
     jtiHash: hashQrTokenId(payload.jti),
-    expiresAt: new Date(payload.exp * 1000),
+    expiresAt: payload.exp ? new Date(payload.exp * 1000) : null,
   };
 }
 
@@ -105,10 +109,9 @@ export function verifyQrToken(qrData: string) {
     typeof payload.passId !== "string" ||
     typeof payload.userId !== "string" ||
     typeof payload.jti !== "string" ||
-    typeof payload.exp !== "number" ||
     typeof payload.iat !== "number" ||
     payload.iat > now + 30 ||
-    payload.exp <= now
+    (typeof payload.exp === "number" && payload.exp <= now)
   ) {
     throw new Error("QR code expired or invalid");
   }

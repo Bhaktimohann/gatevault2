@@ -80,16 +80,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Pass is no longer valid" }, { status: 400 });
     }
 
-    const token = createQrToken(String(pass._id), String(pass.user), 5 * 60);
+    const token = createQrToken(String(pass._id), String(pass.user));
 
     pass.qrTokenHash = token.jtiHash;
-    pass.qrTokenExpiresAt = token.expiresAt;
+    pass.qrTokenExpiresAt = undefined;
     await pass.save();
 
     return NextResponse.json(
       {
         qrData: token.qrData,
-        expiresAt: token.expiresAt.toISOString(),
       },
       {
         status: 200,

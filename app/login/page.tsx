@@ -10,6 +10,15 @@ type SessionUserWithRole = {
   role?: UserRole;
 };
 
+function getDashboardPath(role?: UserRole) {
+  if (role === "admin") return "/admin";
+  if (role === "hod") return "/hod";
+  if (role === "warden") return "/warden";
+  if (role === "security") return "/security";
+
+  return "/dashboard";
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -45,9 +54,15 @@ export default function LoginPage() {
       return;
     }
 
-    const session = await getSession();
+    let session = await getSession();
+
+    for (let attempt = 0; attempt < 5 && !session?.user; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      session = await getSession();
+    }
+
     const role = (session?.user as SessionUserWithRole | undefined)?.role;
-    router.push(role === "admin" ? "/admin" : role === "hod" ? "/hod" : role === "warden" ? "/warden" : role === "security" ? "/security" : "/dashboard");
+    router.push(getDashboardPath(role));
   }, [email, password, router]);
 
   const handleGoogleLogin = useCallback(() => {

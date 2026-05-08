@@ -7,7 +7,6 @@ import { isSameOriginRequest } from "@/lib/requestSecurity";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
 import { isObjectId, readJson } from "@/lib/security";
 import { formatDisplayPassTime, formatPassDateInput, parseDateOnly, parsePassDateTime } from "@/lib/passDateTime";
-import { createQrToken } from "@/lib/qrToken";
 import {
   DEFAULT_SHORT_PASS_DURATION_HOURS,
   DEFAULT_SHORT_PASS_GRACE_MINUTES,
@@ -153,45 +152,6 @@ function hasPendingApproval(pass: {
     (pass.passType === "LongLeave" &&
       (pass.hodApprovalStatus === "Pending" || pass.wardenApprovalStatus === "Pending"))
   );
-}
-
-function isApprovedForQr(pass: {
-  approvalStatus?: string;
-  passType?: string;
-  hodApprovalStatus?: string;
-  wardenApprovalStatus?: string;
-}) {
-  return (
-    pass.approvalStatus === "Approved" &&
-    (pass.passType !== "LongLeave" ||
-      (pass.hodApprovalStatus === "Approved" && pass.wardenApprovalStatus === "Approved"))
-  );
-}
-
-function canIssueQr(pass: LeanPass, now = new Date()) {
-  if (
-    !pass._id ||
-    !pass.user ||
-    !isApprovedForQr(pass) ||
-    pass.status === "Returned" ||
-    pass.status === "Expired" ||
-    pass.status === "Cancelled" ||
-    pass.scannedInAt
-  ) {
-    return false;
-  }
-
-  if (
-    pass.passType !== "LongLeave" &&
-    !pass.scannedOutAt &&
-    pass.timeOut instanceof Date &&
-    pass.timeIn instanceof Date &&
-    now > pass.timeIn
-  ) {
-    return false;
-  }
-
-  return !(pass.passType === "LongLeave" && pass.timeIn instanceof Date && pass.timeIn <= now);
 }
 
 export async function POST(req: Request) {
@@ -426,31 +386,11 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .exec();
 
-    const qrByPassId = new Map<string, { qrData: string; qrExpiresAt: string }>();
-
-    await Promise.all(
-      passes.map(async (pass) => {
-        if (!canIssueQr(pass, now)) {
-          return;
-        }
-
-        const token = createQrToken(String(pass._id), String(pass.user), 5 * 60);
-        pass.qrTokenHash = token.jtiHash;
-        pass.qrTokenExpiresAt = token.expiresAt;
-        await pass.save();
-        qrByPassId.set(String(pass._id), {
-          qrData: token.qrData,
-          qrExpiresAt: token.expiresAt.toISOString(),
-        });
-      })
-    );
-
     const formattedPasses = passes.map((passDocument) => {
       const pass = passDocument.toObject() as LeanPass;
 
       return {
         ...pass,
-        ...qrByPassId.get(String(pass._id)),
         timeOut: formatDisplayPassTime(pass.timeOut, pass.requestedTimeOut),
         timeIn: formatDisplayPassTime(pass.timeIn, pass.requestedTimeIn),
         status: pass.status === "Cancelled"

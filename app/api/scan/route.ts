@@ -177,12 +177,10 @@ export async function POST(req: Request) {
     const pass = await Pass.findOne({
       _id: token.passId,
       user: token.userId,
-      qrTokenHash: token.jtiHash,
-      qrTokenExpiresAt: { $gt: now },
     });
 
     if (!pass) {
-      return NextResponse.json({ message: "QR code is invalid, expired, or already refreshed" }, { status: 400 });
+      return NextResponse.json({ message: "QR code is invalid" }, { status: 400 });
     }
 
     if ((pass.approvalStatus || "Approved") !== "Approved") {
@@ -239,8 +237,6 @@ export async function POST(req: Request) {
     if (!pass.scannedOutAt && (pass.status === "Active" || pass.status === "Pending")) {
       query = {
         _id: pass._id,
-        qrTokenHash: token.jtiHash,
-        qrTokenExpiresAt: { $gt: now },
         ...isUnscannedOutQuery(),
         status: { $in: ["Active", "Pending"] },
       };
@@ -276,8 +272,6 @@ export async function POST(req: Request) {
 
       query = {
         _id: pass._id,
-        qrTokenHash: token.jtiHash,
-        qrTokenExpiresAt: { $gt: now },
         $and: [
           isUnscannedInQuery(),
           { $or: [{ status: "Out" }, { scannedOutAt: { $exists: true, $ne: null } }] },
