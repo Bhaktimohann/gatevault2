@@ -14,7 +14,7 @@ import {
 import { signOut, useSession } from "next-auth/react";
 import { usePasses } from "@/hooks/usePasses";
 import { useNotifications } from "@/hooks/useNotifications";
-import { Pass } from "@/types";
+import type { Pass } from "@/types";
 import { PageSkeleton } from "@/components/LoadingSkeleton";
 
 function isCampusOut(pass: Pass) {

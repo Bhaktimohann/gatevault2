@@ -1,34 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import type { Pass } from "@/types";
 
 const PASS_REFRESH_INTERVAL_MS = 2000;
-
-interface Pass {
-  _id: string;
-  user: string;
-  phone: string;
-  place: string;
-  purpose: string;
-  passType?: "Short" | "LongLeave";
-  leaveStartDate?: string;
-  leaveEndDate?: string;
-  timeOut: string;
-  timeIn: string;
-  person?: string;
-  personPhone?: string;
-  status: "Active" | "Out" | "Returned" | "Expired" | "Pending" | "Cancelled";
-  shortPassStatus?: "Active" | "Overdue" | "On Time" | "On Time (Grace)" | "Late" | "Invalid Short Pass";
-  allowedDurationHours?: number;
-  graceMinutes?: number;
-  expectedReturnTime?: string;
-  totalDurationMinutes?: number | null;
-  lateDurationMinutes?: number | null;
-  approvalStatus?: "Pending" | "Approved" | "Rejected";
-  hodApprovalStatus?: "NotRequired" | "Pending" | "Approved" | "Rejected";
-  scannedOutAt?: string;
-  scannedInAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface UsePassesReturn {
   passes: Pass[];

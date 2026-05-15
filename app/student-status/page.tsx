@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { MobileLayout } from "@/components/MobileLayout";
 import { PageSkeleton } from "@/components/LoadingSkeleton";
 import { usePasses } from "@/hooks/usePasses";
-import { Pass } from "@/types";
+import type { Pass } from "@/types";
 
 function isCampusOut(pass: Pass) {
   return pass.status === "Out" || Boolean(pass.scannedOutAt && !pass.scannedInAt);

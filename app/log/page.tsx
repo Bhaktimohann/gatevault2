@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Home, Info, Settings, AlertCircle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { usePasses } from "@/hooks/usePasses";
-import { Pass } from "@/types";
+import type { Pass } from "@/types";
 
 function getLogLabel(log: Pass) {
   if (log.status === "Cancelled") return "Cancelled";
